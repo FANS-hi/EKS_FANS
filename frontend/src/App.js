@@ -426,6 +426,16 @@ function HomePageWrapper() {
 
 function App() {
   useEffect(() => {
+    // 앱 시작 시 로그인 상태 초기화
+    // 첫 방문 시에만 초기화 (브라우저 세션당 1회)
+    if (!sessionStorage.getItem('appInitialized')) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      localStorage.removeItem('rememberMe');
+      sessionStorage.clear();
+      sessionStorage.setItem('appInitialized', 'true');
+    }
+
     // 소셜 로그인 세션 관리 개선
     const handleBeforeUnload = (e) => {
       const isSocialLogin = sessionStorage.getItem('socialLogin') === 'true';

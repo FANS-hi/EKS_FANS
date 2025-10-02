@@ -718,7 +718,7 @@ const ActivityLog = () => {
                 </div>
               ) : (
                 activities.map(activity => (
-                  <div key={activity.id} className="activity-item" onClick={() => navigate(`/news/${activity.article.id}`)}>
+                  <div key={activity.id} className="activity-item" onClick={() => navigate(`/news/${activity.article.id}`)} style={{ cursor: 'pointer' }}>
                     <div className="activity-type-badge">
                       {activity.type === 'VIEW' ? '👁️ 읽음' :
                        activity.type === 'LIKE' ? '👍 좋아요' :
@@ -908,12 +908,6 @@ const ActivityLog = () => {
                           <div className="comment-tags">
                             <span className="comment-source">{comment.article.source}</span>
                             <span className="comment-category">{comment.article.category}</span>
-                          </div>
-                        </div>
-                        <div className="comment-stats">
-                          <div className="comment-likes-info">
-                            <span className="likes-label">댓글 좋아요</span>
-                            <span className="likes-count">{comment.likeCount}개</span>
                           </div>
                         </div>
                       </div>
