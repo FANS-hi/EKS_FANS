@@ -15,7 +15,7 @@ const SocialLogin = ({ type = "login" }) => {
     try {
       return new URL(window.location.origin).toString();
     } catch {
-      return 'http://localhost:3000';
+      return 'https://minwoo.shop';
     }
   };
 
