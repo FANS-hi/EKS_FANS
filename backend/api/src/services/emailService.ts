@@ -167,7 +167,7 @@ export class EmailService {
               </ul>
             </div>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}" 
+              <a href="${process.env.FRONTEND_URL || 'https://minwoo.shop'}" 
                  style="background-color: #007bff; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
                 FANS 시작하기
               </a>

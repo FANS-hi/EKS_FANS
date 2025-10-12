@@ -155,10 +155,10 @@ router.get('/kakao/callback', async (req, res) => {
     (req.session as any).username = result.user.username;
     (req.session as any).isAuthenticated = true;
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://minwoo.shop';
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
   } catch (e: any) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://minwoo.shop';
 
     // 신규 사용자인 경우 등록 페이지로 리다이렉트
     if (e.message.startsWith('NEW_USER:')) {
@@ -199,10 +199,10 @@ router.get('/naver/callback', async (req, res) => {
     (req.session as any).username = result.user.username;
     (req.session as any).isAuthenticated = true;
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://minwoo.shop';
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
   } catch (e: any) {
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://minwoo.shop';
 
     // 신규 네이버 사용자인 경우 회원가입 페이지로 리다이렉트
     if (e.message.startsWith('NEW_USER:')) {

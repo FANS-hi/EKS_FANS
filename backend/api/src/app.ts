@@ -31,7 +31,7 @@ app.use(helmet({
 // CORS 설정 - 환경변수에서 허용 origin 가져오기
 const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS
   ? process.env.CORS_ALLOWED_ORIGINS.split(',').map(origin => origin.trim())
-  : ['http://localhost:3000', 'http://localhost:3001'];
+  : [];
 
 app.use(cors({
   origin: allowedOrigins,
@@ -106,7 +106,7 @@ async function startServer() {
     app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3001'}`);
+      logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'https://minwoo.shop'}`);
     });
   } catch (error) {
     logger.error('❌ Database connection failed:', error);

@@ -142,7 +142,7 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
   // 로그아웃 함수
   const handleLogout = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/logout', {
+      const response = await fetch('/api/auth/logout', {
         method: 'POST',
         credentials: 'include'
       });
@@ -459,7 +459,7 @@ const Header = ({ onSortChange, onSearch, selectedSort, onCategoryFilter, onSour
                 user?.profileImage && user.profileImage.trim() !== '' ? (
                   <>
                     <img
-                      src={user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:3000${user.profileImage}?t=${Date.now()}`}
+                      src={user.profileImage.startsWith('http') ? user.profileImage : `${user.profileImage}?t=${Date.now()}`}
                       alt="프로필 이미지"
                       className="user-profile-image"
                       crossOrigin="anonymous"

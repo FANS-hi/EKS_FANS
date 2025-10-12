@@ -100,7 +100,7 @@ const MyPage = () => {
           if (data.data.user.profileImage) {
             const imageUrl = data.data.user.profileImage.startsWith('http')
               ? data.data.user.profileImage
-              : `http://localhost:3000${data.data.user.profileImage}`;
+              : data.data.user.profileImage;
 
             // 이미지를 base64로 변환해서 로드
             loadImageAsDataUrl(imageUrl);
@@ -469,7 +469,7 @@ const MyPage = () => {
         // 새 이미지를 base64로 변환
         const imageUrl = newProfileImage.startsWith('http')
           ? newProfileImage
-          : `http://localhost:3000${newProfileImage}`;
+          : newProfileImage;
         loadImageAsDataUrl(imageUrl);
 
         setUser(prevUser => ({
@@ -638,7 +638,7 @@ const MyPage = () => {
                           />
                         ) : (
                           <img
-                            src={user.profileImage.startsWith('http') ? user.profileImage : `http://localhost:3000${user.profileImage}?t=${Date.now()}`}
+                            src={user.profileImage.startsWith('http') ? user.profileImage : `${user.profileImage}?t=${Date.now()}`}
                             alt="프로필 이미지"
                             className="profile-image"
                             crossOrigin="anonymous"

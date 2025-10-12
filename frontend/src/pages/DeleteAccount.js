@@ -25,7 +25,7 @@ const DeleteAccount = () => {
           return;
         }
 
-        const response = await fetch('http://localhost:3000/api/auth/profile', {
+        const response = await fetch('/api/auth/profile', {
           headers: {
             'Authorization': `Bearer ${token}`
           },
@@ -74,7 +74,7 @@ const DeleteAccount = () => {
         token = sessionStorage.getItem('token');
       }
 
-      const response = await fetch('http://localhost:3000/api/auth/delete-account', {
+      const response = await fetch('/api/auth/delete-account', {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
