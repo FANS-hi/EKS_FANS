@@ -87,32 +87,6 @@ services:
   # 크롤러 서비스들
   # ================================
 
-  # RSS Crawler Service (Port: 4002)
-  rss-crawler:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./rss-crawler/Dockerfile
-    container_name: fans_rss_crawler
-    expose:
-      - "4002"
-    env_file:
-      - .env
-    environment:
-      - RSS_CRAWLER_PORT=${RSS_CRAWLER_PORT:-4002}
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    volumes:
-      - ./backend/crawler/rss-crawler/src:/app/src
-      - ./backend/crawler/rss-crawler/package.json:/app/package.json
-      - ./backend/crawler/rss-crawler/package-lock.json:/app/package-lock.json
-      - ./backend/crawler/rss-crawler/tsconfig.json:/app/tsconfig.json
-      - /app/node_modules
-      - /app/dist
-    restart: unless-stopped
-
   # API Crawler Service (Port: 4003)
   api-crawler:
     build:
@@ -305,8 +279,6 @@ services:
         condition: service_healthy
       summarize-ai:
         condition: service_healthy
-      rss-crawler:
-        condition: service_started
       api-crawler:
         condition: service_started
     networks:

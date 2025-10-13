@@ -12,8 +12,7 @@
 ```
 Backend API Server (Port 3000)
 ├── News Crawler Service (통합)
-│   ├── Naver API 크롤러 (검색 쿼리 기반)
-│   └── RSS 크롤러 (5개 언론사 직접 수집)
+│   └── Naver API 크롤러 (검색 쿼리 기반)
 ├── Auth Service
 ├── News Feed Service
 ├── Market Summary Service
@@ -27,14 +26,10 @@ Backend API Server (Port 3000)
 - 다양한 언론사의 최신 뉴스 획득 시도
 - 필터링 후 실제 저장률: **16.7%**
 
-**RSS 피드 크롤러**:
-- 주요 5개 언론사 직접 수집
-  - 조선일보 (SPA 처리)
-  - 매일경제 (SPA 처리)
-  - 머니투데이
-  - 한겨레
-  - 한국경제
-- 각 언론사별 최신 10개 기사 수집
+**Puppeteer 크롤러**:
+- Daum 뉴스 포털을 통한 동적 콘텐츠 크롤링
+- 여러 언론사 기사를 통일된 형식으로 수집
+- 3개 인스턴스로 시간차 분산 처리
 
 ### 2.3 핵심 문제점
 
@@ -44,13 +39,13 @@ Backend API Server (Port 3000)
    - 실제 사용 가능한 기사 부족
 
 2. **시스템 구조 문제**
-   - API/RSS 크롤러가 단일 스레드로 순차 처리
+   - API/Puppeteer 크롤러가 독립적으로 처리
    - 크롤링 문제 시 메인 API 서버에 영향
    - 단일 장애점으로 전체 서비스 중단 위험
 
 ---
 
-## 3. 목표 아키텍처: API/RSS Active-Active 2x2 클러스터
+## 3. 목표 아키텍처: API/Puppeteer 크롤러 클러스터
 
 ### 3.1 새로운 시스템 구조
 ```
@@ -65,13 +60,11 @@ Backend API Server (Port 3000)
 │  ├── Market Summary Service                                 │
 │  └── AI Integration Service                                 │
 ├─────────────────────────────────────────────────────────────┤
-│  Crawler Service Cluster (API/RSS Active-Active 2x2)        │
-│  ├── Group A (Naver API 크롤러)                             │
-│  │   ├── API Crawler A1 (Port 4001) - Primary              │
-│  │   └── API Crawler A2 (Port 4003) - Secondary            │
-│  └── Group B (RSS 피드 크롤러)                              │
-│      ├── RSS Crawler B1 (Port 4002) - Primary              │
-│      └── RSS Crawler B2 (Port 4004) - Secondary            │
+│  Crawler Service Cluster                                    │
+│  ├── API Crawler (Port 4003)                                │
+│  ├── Puppeteer Crawler 1 (Port 4004)                        │
+│  ├── Puppeteer Crawler 2 (Port 4004)                        │
+│  └── Puppeteer Crawler 3 (Port 4004)                        │
 ├─────────────────────────────────────────────────────────────┤
 │  AI Service (Port 8002)                                     │
 │  └── Bias Analysis (편향성 분석)                            │
@@ -80,61 +73,58 @@ Backend API Server (Port 3000)
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 크롤러 그룹별 설정
+### 3.2 크롤러별 설정
 
-#### Group A: Naver API 크롤러
+#### API 크롤러
 ```javascript
 const API_CRAWLER_CONFIG = {
   type: 'NAVER_API',
   searchQuery: '최신 뉴스',
-  interval: 30000,      // 30초
+  interval: 300000,     // 5분
   maxResults: 100,      // API 최대 결과
   filterEnabled: true   // 품질 필터링
 };
 ```
 
-#### Group B: RSS 피드 크롤러
+#### Puppeteer 크롤러
 ```javascript
-const RSS_CRAWLER_CONFIG = {
-  type: 'RSS_FEED',
-  sources: [
-    { name: '조선일보', url: 'https://www.chosun.com/arc/outboundfeeds/rss/', type: 'SPA' },
-    { name: '매일경제', url: 'https://www.mk.co.kr/rss/30000001/', type: 'SPA' },
-    { name: '머니투데이', url: 'https://rss.mt.co.kr/mt_news.xml', type: 'NORMAL' },
-    { name: '한겨레', url: 'https://www.hani.co.kr/rss/', type: 'NORMAL' },
-    { name: '한국경제', url: 'https://www.hankyung.com/feed/all-news', type: 'NORMAL' }
-  ],
-  interval: 30000,           // 30초
-  articlesPerSource: 10      // 언론사당 10개
+const PUPPETEER_CRAWLER_CONFIG = {
+  type: 'DAUM_NEWS',
+  interval: 180000,          // 3분
+  replicas: 3,               // 인스턴스 수
+  browserPool: 5,            // 브라우저 풀 크기
+  targetUrl: 'https://news.daum.net'
 };
 ```
 
 ### 3.3 시간차 크롤링 전략
 ```
-시간축: 0초   15초   30초   45초   60초   75초   90초
-A1:     ●            ●            ●            ●
-A2:           ●            ●            ●
-B1:     ●            ●            ●            ●
-B2:           ●            ●            ●
+시간축: 0초        60초       120초      180초      240초
+Puppeteer 1: ●                           ●
+Puppeteer 2:         ●                           ●
+Puppeteer 3:                   ●                           ●
+
+간격: 3분 (180초)
+지연: interval / replicas * index
 ```
 
 ---
 
 ## 4. 구현 계획
 
-### 4.1 Phase 1: 크롤러 서비스 분리 (1-2일)
-- [x] `backend/crawler-service` 디렉토리 생성
-- [x] API/RSS 크롤러 분리 구현
+### 4.1 Phase 1: 크롤러 서비스 분리 (완료)
+- [x] `backend/crawler` 디렉토리 생성
+- [x] API/Puppeteer 크롤러 분리 구현
 - [x] 환경변수 기반 설정
-- [ ] Docker 컨테이너화
+- [x] Docker 컨테이너화
 
-### 4.2 Phase 2: Active-Active 클러스터 (2-3일)
-- [ ] 4개 크롤러 인스턴스 구성
-- [ ] Primary/Secondary 역할 설정
-- [ ] 시간차 스케줄링 구현
-- [ ] 중복 방지 로직
+### 4.2 Phase 2: Puppeteer 크롤러 클러스터 (완료)
+- [x] 3개 Puppeteer 인스턴스 구성
+- [x] 시간차 스케줄링 구현
+- [x] 중복 방지 로직
+- [x] 브라우저 풀링
 
-### 4.3 Phase 3: 모니터링 시스템 (1-2일)
+### 4.3 Phase 3: 모니터링 시스템 (진행 예정)
 - [ ] 헬스체크 엔드포인트
 - [ ] 크롤링 통계 대시보드
 - [ ] 장애 알림 시스템
@@ -147,74 +137,60 @@ B2:           ●            ●            ●
 version: '3.8'
 
 services:
-  # Group A: Naver API Crawlers
-  api-crawler-a1:
-    build: ./backend/crawler-service
-    container_name: fans_api_crawler_a1
-    ports:
-      - "4001:4001"
+  # API Crawler
+  api-crawler:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./api-crawler/Dockerfile
+    container_name: fans_api_crawler
+    expose:
+      - "4003"
     environment:
-      - CRAWLER_TYPE=API
-      - CRAWLER_ROLE=PRIMARY
-      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
-      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
-      - SEARCH_QUERY=최신 뉴스
-      - CRAWLER_DELAY=0
-      - DB_HOST=postgres
-      - PORT=4001
+      - API_CRAWLER_PORT=${API_CRAWLER_PORT:-4003}
+      - AUTO_CRAWL=${AUTO_CRAWL:-true}
+      - CRAWL_INTERVAL_MINUTES=${CRAWL_INTERVAL_MINUTES:-5}
+      - NAVER_SEARCH_CLIENT_ID=${NAVER_SEARCH_CLIENT_ID}
+      - NAVER_SEARCH_CLIENT_SECRET=${NAVER_SEARCH_CLIENT_SECRET}
     depends_on:
       - postgres
+      - bias-analysis-ai
     restart: unless-stopped
 
-  api-crawler-a2:
-    build: ./backend/crawler-service
-    container_name: fans_api_crawler_a2
-    ports:
-      - "4003:4003"
+  # Puppeteer Crawlers
+  puppeteer-crawler-1:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./puppeteer-crawler/Dockerfile
+    container_name: fans_puppeteer_crawler_1
+    expose:
+      - "4004"
     environment:
-      - CRAWLER_TYPE=API
-      - CRAWLER_ROLE=SECONDARY
-      - NAVER_CLIENT_ID=${NAVER_CLIENT_ID}
-      - NAVER_CLIENT_SECRET=${NAVER_CLIENT_SECRET}
-      - SEARCH_QUERY=최신 뉴스
-      - CRAWLER_DELAY=15000
-      - DB_HOST=postgres
-      - PORT=4003
+      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+      - AUTO_CRAWL=${AUTO_CRAWL:-true}
+      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+      - REPLICA_INDEX=0
     depends_on:
       - postgres
+    shm_size: '2gb'
     restart: unless-stopped
 
-  # Group B: RSS Feed Crawlers
-  rss-crawler-b1:
-    build: ./backend/crawler-service
-    container_name: fans_rss_crawler_b1
-    ports:
-      - "4002:4002"
+  puppeteer-crawler-2:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./puppeteer-crawler/Dockerfile
+    container_name: fans_puppeteer_crawler_2
     environment:
-      - CRAWLER_TYPE=RSS
-      - CRAWLER_ROLE=PRIMARY
-      - RSS_FEEDS=chosun,mk,mt,hani,hankyung
-      - CRAWLER_DELAY=0
-      - DB_HOST=postgres
-      - PORT=4002
-    depends_on:
-      - postgres
+      - REPLICA_INDEX=1
     restart: unless-stopped
 
-  rss-crawler-b2:
-    build: ./backend/crawler-service
-    container_name: fans_rss_crawler_b2
-    ports:
-      - "4004:4004"
+  puppeteer-crawler-3:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./puppeteer-crawler/Dockerfile
+    container_name: fans_puppeteer_crawler_3
     environment:
-      - CRAWLER_TYPE=RSS
-      - CRAWLER_ROLE=SECONDARY
-      - RSS_FEEDS=chosun,mk,mt,hani,hankyung
-      - CRAWLER_DELAY=15000
-      - DB_HOST=postgres
-      - PORT=4004
-    depends_on:
-      - postgres
+      - REPLICA_INDEX=2
     restart: unless-stopped
 ```
 
@@ -246,23 +222,39 @@ POST /api/crawler/cluster/control  # 클러스터 제어
 ```json
 {
   "cluster_status": "healthy",
-  "groups": {
-    "A": {
+  "crawlers": {
+    "api_crawler": {
       "type": "NAVER_API",
-      "primary": { "id": "A1", "status": "active", "last_crawl": "2025-09-29T15:30:00Z" },
-      "secondary": { "id": "A2", "status": "active", "last_crawl": "2025-09-29T15:30:15Z" }
+      "status": "active",
+      "last_crawl": "2025-10-13T15:30:00Z",
+      "success_rate": "16.7%"
     },
-    "B": {
-      "type": "RSS_FEED",
-      "primary": { "id": "B1", "status": "active", "last_crawl": "2025-09-29T15:30:00Z" },
-      "secondary": { "id": "B2", "status": "active", "last_crawl": "2025-09-29T15:30:15Z" }
-    }
+    "puppeteer_crawlers": [
+      {
+        "id": "puppeteer-1",
+        "status": "active",
+        "last_crawl": "2025-10-13T15:30:00Z",
+        "replica_index": 0
+      },
+      {
+        "id": "puppeteer-2",
+        "status": "active",
+        "last_crawl": "2025-10-13T15:31:00Z",
+        "replica_index": 1
+      },
+      {
+        "id": "puppeteer-3",
+        "status": "active",
+        "last_crawl": "2025-10-13T15:32:00Z",
+        "replica_index": 2
+      }
+    ]
   },
   "statistics": {
-    "total_articles_today": 847,
-    "api_success_rate": "16.7%",
-    "rss_success_rate": "92.3%",
-    "avg_crawl_time": "1.8s"
+    "total_articles_today": 1247,
+    "api_articles": 150,
+    "puppeteer_articles": 1097,
+    "avg_crawl_time": "2.3s"
   }
 }
 ```
@@ -270,7 +262,7 @@ POST /api/crawler/cluster/control  # 클러스터 제어
 ### 7.2 알림 시스템
 - 크롤러 인스턴스 다운 알림
 - API 성공률 15% 미만 시 알림
-- RSS 피드 오류 발생 알림
+- Puppeteer 크롤링 오류 발생 알림
 - 데이터베이스 연결 실패 알림
 
 ---
@@ -286,35 +278,35 @@ POST /api/crawler/cluster/control  # 클러스터 제어
 | 실시간성 | 30초 | 15초 | 2배 ↑ |
 
 ### 8.2 장애 대응
-- **Primary 장애**: Secondary 자동 승격
-- **Group 장애**: 다른 Group 독립 운영
-- **완전 복구**: 15초 이내
+- **단일 Puppeteer 인스턴스 장애**: 나머지 인스턴스 독립 운영
+- **API 크롤러 장애**: Puppeteer 크롤러 독립 운영
+- **완전 복구**: 자동 재시작 (unless-stopped)
 
 ---
 
-## 9. 개발 진행 현황 (2025-09-29)
+## 9. 개발 진행 현황 (2025-10-13)
 
 ### 9.1 완료된 작업 ✅
-- RSS 크롤러 구현 및 안정화
-- SPA 사이트 처리 (조선일보, 매일경제)
-- 인코딩 깨짐 감지 및 필터링
+- Puppeteer 크롤러 구현 및 안정화
+- Daum 뉴스 포털 동적 크롤링
+- 3개 인스턴스 시간차 분산 처리
 - AI 편향성 분석 서비스 통합
-- 문단 구분 개선
+- API 크롤러 독립 분리
+- Docker 컨테이너화 완료
 
-### 9.2 진행중 🔄
-- 크롤러 서비스 독립 분리
-- Docker 컨테이너화
+### 9.2 제거된 기능 🗑️
+- RSS 크롤러 (Puppeteer로 대체)
 
 ### 9.3 예정 📋
-- Active-Active 클러스터 구축
 - 모니터링 대시보드
-- 자동 페일오버
+- 크롤링 통계 API
+- 성능 메트릭 수집
 
 ---
 
 ## 10. 주요 의사결정 기록
 
-### 10.1 카테고리 기반 → API/RSS 기반 전환 (2025-09-24)
+### 10.1 카테고리 기반 → API/Puppeteer 기반 전환 (2025-09-24)
 
 **문제점**:
 - Naver API로 특정 언론사 필터링 불가
@@ -323,17 +315,19 @@ POST /api/crawler/cluster/control  # 클러스터 제어
 
 **해결책**:
 - Naver API: 다양성 확보용 보조 수단
-- RSS 피드: 주요 언론사 직접 수집으로 품질 확보
-- 이중화 구조로 안정성 확보
+- Puppeteer 크롤러: Daum 뉴스 포털을 통한 동적 크롤링
+- 시간차 분산 구조로 안정성 확보
 
-### 10.2 SPA 처리 방식 결정 (2025-09-27)
+### 10.2 RSS → Puppeteer 전환 결정 (2025-10-13)
 
 **문제점**:
-- 조선일보, 매일경제 등 SPA 구조로 콘텐츠 추출 불가
+- RSS 크롤러의 제한적 데이터 수집
+- SPA 사이트 처리의 한계
 
 **해결책**:
-- RSS description 필드 활용
-- Puppeteer 도입은 비용 문제로 보류 (월 $30-60 추가)
+- Puppeteer 크롤러 도입
+- Daum 뉴스 포털 단일 크롤링으로 여러 언론사 커버
+- 브라우저 풀링으로 성능 최적화
 
 ---
 
