@@ -95,7 +95,7 @@ vi .env
 
 ```bash
 # HTTPS 설정 파일 비활성화
-cd ~/FANS/nginx/conf.d
+cd ~/FANS/backend/nginx/conf.d
 mv minwoo.shop.conf minwoo.shop.conf.backup
 mv minwoo.shop.http.conf minwoo.shop.conf
 
@@ -114,12 +114,12 @@ sudo apt install -y certbot
 sudo certbot certonly --standalone -d minwoo.shop -d www.minwoo.shop
 
 # 인증서 파일 복사
-sudo cp /etc/letsencrypt/live/minwoo.shop/fullchain.pem ~/FANS/nginx/ssl/
-sudo cp /etc/letsencrypt/live/minwoo.shop/privkey.pem ~/FANS/nginx/ssl/
-sudo chown -R $USER:$USER ~/FANS/nginx/ssl/
+sudo cp /etc/letsencrypt/live/minwoo.shop/fullchain.pem ~/FANS/backend/nginx/ssl/
+sudo cp /etc/letsencrypt/live/minwoo.shop/privkey.pem ~/FANS/backend/nginx/ssl/
+sudo chown -R $USER:$USER ~/FANS/backend/nginx/ssl/
 
 # Nginx HTTPS 설정 활성화
-cd ~/FANS/nginx/conf.d
+cd ~/FANS/backend/nginx/conf.d
 # minwoo.shop.conf 파일에서 SSL 관련 주석 제거
 vi minwoo.shop.conf
 
@@ -261,7 +261,7 @@ docker stats
 docker system df
 
 # 로그 크기 확인
-du -sh ~/FANS/nginx/logs/*
+du -sh ~/FANS/backend/nginx/logs/*
 ```
 
 ### 로그 관리
@@ -389,7 +389,7 @@ docker builder prune
 sudo vi /etc/logrotate.d/fans-nginx
 
 # 내용:
-# ~/FANS/nginx/logs/*.log {
+# ~/FANS/backend/nginx/logs/*.log {
 #     daily
 #     rotate 7
 #     compress

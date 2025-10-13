@@ -16,9 +16,9 @@
 
 ### 3. **Nginx 설정 파일**
 생성된 파일:
-- ✅ `nginx/nginx.conf` - 메인 설정
-- ✅ `nginx/conf.d/minwoo.shop.conf` - HTTPS 전용 (SSL 인증서 필요)
-- ✅ `nginx/conf.d/minwoo.shop.http.conf` - HTTP 전용 (SSL 없이 시작)
+- ✅ `backend/nginx/nginx.conf` - 메인 설정
+- ✅ `backend/nginx/conf.d/minwoo.shop.conf` - HTTPS 전용 (SSL 인증서 필요)
+- ✅ `backend/nginx/conf.d/minwoo.shop.http.conf` - HTTP 전용 (SSL 없이 시작)
 
 라우팅 설정:
 - `/` → Frontend (React, 3001)
@@ -106,7 +106,7 @@ cd ~/FANS
 
 # 7. Nginx 설정 선택
 # Option A: HTTP만 사용 (SSL 없음)
-cd nginx/conf.d
+cd backend/nginx/conf.d
 rm minwoo.shop.conf
 ln -s minwoo.shop.http.conf minwoo.shop.conf
 
@@ -167,13 +167,14 @@ curl http://minwoo.shop/api/common/categories
 FANS/
 ├── .env                                    # 환경변수 (실제 값 포함)
 ├── docker-compose.yml                      # Docker 서비스 구성
-├── nginx/
-│   ├── nginx.conf                         # Nginx 메인 설정
-│   ├── conf.d/
-│   │   ├── minwoo.shop.conf              # HTTPS 설정
-│   │   └── minwoo.shop.http.conf         # HTTP 설정
-│   ├── ssl/                               # SSL 인증서 저장
-│   └── logs/                              # Nginx 로그
+├── backend/
+│   └── nginx/
+│       ├── nginx.conf                     # Nginx 메인 설정
+│       ├── conf.d/
+│       │   ├── minwoo.shop.conf          # HTTPS 설정
+│       │   └── minwoo.shop.http.conf     # HTTP 설정
+│       ├── ssl/                           # SSL 인증서 저장
+│       └── logs/                          # Nginx 로그
 ├── AWS_EC2_DEPLOYMENT_GUIDE.md            # 상세 배포 가이드
 └── DEPLOYMENT_SUMMARY.md                  # 이 파일
 ```
@@ -283,7 +284,7 @@ docker logs fans_nginx
 
 - **상세 가이드**: `AWS_EC2_DEPLOYMENT_GUIDE.md` 참고
 - **환경변수 가이드**: `ENV_SETUP_GUIDE.md` 참고
-- **로그 위치**: `~/FANS/nginx/logs/`
+- **로그 위치**: `~/FANS/backend/nginx/logs/`
 
 ## ✅ 최종 체크리스트
 
