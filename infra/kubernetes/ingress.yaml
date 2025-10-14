@@ -1,0 +1,44 @@
+# FANS ALB Ingress using TargetGroupBinding
+# Connects Kubernetes Services to existing ALB Target Groups
+
+---
+# Main API Service - Target Group Binding
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: main-api-tgb
+  namespace: fans
+spec:
+  serviceRef:
+    name: main-api
+    port: 3000
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Main-API-TG/2638218107f93a49
+  targetType: instance
+
+---
+# Bias Analysis AI Service - Target Group Binding
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: bias-analysis-ai-tgb
+  namespace: fans
+spec:
+  serviceRef:
+    name: bias-analysis-ai
+    port: 8002
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Bias-AI-TG/e2f291631628a4ef
+  targetType: instance
+
+---
+# Summarize AI Service - Target Group Binding
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: summarize-ai-tgb
+  namespace: fans
+spec:
+  serviceRef:
+    name: summarize-ai
+    port: 8000
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Summarize-AI-TG/b21558acf9aa7dad
+  targetType: instance

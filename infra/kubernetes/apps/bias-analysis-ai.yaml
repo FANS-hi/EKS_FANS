@@ -1,0 +1,129 @@
+# FANS Bias Analysis AI Service
+# Python FastAPI + scikit-learn (Port 8002)
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bias-analysis-ai
+  namespace: fans
+  labels:
+    app: bias-analysis-ai
+    tier: ai
+    project: FANS
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bias-analysis-ai
+  template:
+    metadata:
+      labels:
+        app: bias-analysis-ai
+        tier: ai
+    spec:
+      containers:
+      - name: bias-analysis-ai
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/bias-analysis-ai:latest
+        ports:
+        - containerPort: 8002
+          name: http
+          protocol: TCP
+
+        # 환경변수
+        env:
+        - name: PORT
+          value: "8002"
+        - name: PYTHON_ENV
+          value: "production"
+        - name: MODEL_PATH
+          value: "/app/models"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: database-url
+
+        # 리소스 제한 (ML 모델 로딩으로 메모리 많이 사용)
+        resources:
+          requests:
+            cpu: 400m
+            memory: 1Gi
+          limits:
+            cpu: 2000m
+            memory: 3Gi
+
+        # ML 모델 파일 볼륨 마운트 (선택사항)
+        # volumeMounts:
+        # - name: model-storage
+        #   mountPath: /app/models
+
+        # Health Check
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 60  # ML 모델 로딩 시간 고려
+          periodSeconds: 15
+          timeoutSeconds: 10
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+      # volumes:
+      # - name: model-storage
+      #   persistentVolumeClaim:
+      #     claimName: bias-model-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bias-analysis-ai
+  namespace: fans
+  labels:
+    app: bias-analysis-ai
+spec:
+  type: NodePort
+  ports:
+  - port: 8002
+    targetPort: 8002
+    protocol: TCP
+    name: http
+  selector:
+    app: bias-analysis-ai
+
+---
+# HPA
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bias-analysis-ai-hpa
+  namespace: fans
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bias-analysis-ai
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85

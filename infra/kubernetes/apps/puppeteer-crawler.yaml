@@ -1,0 +1,109 @@
+# FANS Puppeteer Crawler
+# Puppeteer-based web crawler (Port 4004)
+# 5분 주기로 동적 페이지 크롤링
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: puppeteer-crawler
+  namespace: fans
+  labels:
+    app: puppeteer-crawler
+    tier: crawler
+    project: FANS
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: puppeteer-crawler
+  template:
+    metadata:
+      labels:
+        app: puppeteer-crawler
+        tier: crawler
+    spec:
+      containers:
+      - name: puppeteer-crawler
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/puppeteer-crawler:latest
+        ports:
+        - containerPort: 4004
+          name: http
+          protocol: TCP
+
+        env:
+        - name: PORT
+          value: "4004"
+        - name: PUPPETEER_CRAWLER_PORT
+          value: "4004"
+        - name: NODE_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: database-url
+        - name: DB_HOST
+          value: "dw-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USERNAME
+          value: "fans_admin"
+        - name: DB_PASSWORD
+          value: "CHANGE_ME_PLEASE_12345!"
+        - name: DB_NAME
+          value: "fans_db"
+        - name: PGSSLMODE
+          value: "no-verify"
+        - name: PUPPETEER_SKIP_CHROMIUM_DOWNLOAD
+          value: "true"
+        - name: PUPPETEER_EXECUTABLE_PATH
+          value: "/usr/bin/chromium-browser"
+        - name: AUTO_CRAWL
+          value: "true"
+        - name: CRAWL_INTERVAL_MINUTES
+          value: "5"  # 5분마다 (API Crawler와 동일)
+
+        resources:
+          requests:
+            cpu: 300m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4004
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 4004
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: puppeteer-crawler
+  namespace: fans
+  labels:
+    app: puppeteer-crawler
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4004
+    targetPort: 4004
+    protocol: TCP
+    name: http
+  selector:
+    app: puppeteer-crawler

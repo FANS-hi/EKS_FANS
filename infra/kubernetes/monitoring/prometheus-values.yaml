@@ -1,0 +1,93 @@
+# Prometheus + Grafana Stack Helm Values
+# helm install monitoring prometheus-community/kube-prometheus-stack -f prometheus-values.yaml
+
+# Prometheus 설정
+prometheus:
+  prometheusSpec:
+    retention: 7d  # 메트릭 보관 기간
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 10Gi  # 스토리지 용량
+
+    # 리소스 제한
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 2Gi
+
+# Grafana 설정
+grafana:
+  enabled: true
+
+  # Admin 계정
+  adminPassword: "fans-grafana-2025"  # 변경 필수!
+
+  # 서비스 타입 (LoadBalancer로 변경 시 외부 접근 가능)
+  service:
+    type: ClusterIP  # 또는 LoadBalancer
+    port: 80
+
+  # 리소스 제한
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  # 대시보드 자동 프로비저닝
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+      - name: 'default'
+        orgId: 1
+        folder: ''
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards/default
+
+  # 데이터소스 설정 (Prometheus)
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+      - name: Prometheus
+        type: prometheus
+        url: http://monitoring-kube-prometheus-prometheus:9090
+        access: proxy
+        isDefault: true
+
+# Alertmanager 설정
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# Node Exporter (노드 메트릭 수집)
+nodeExporter:
+  enabled: true
+
+# Kube State Metrics (K8s 리소스 메트릭)
+kubeStateMetrics:
+  enabled: true
+
+# ServiceMonitor 설정 (자동 메트릭 수집)
+serviceMonitor:
+  enabled: true

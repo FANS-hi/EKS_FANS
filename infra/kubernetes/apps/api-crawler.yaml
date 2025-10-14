@@ -1,0 +1,133 @@
+# FANS API Crawler
+# Node.js + Axios (Port 4003)
+# 5분 주기로 Naver News API 크롤링 (카테고리당 20개)
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-crawler
+  namespace: fans
+  labels:
+    app: api-crawler
+    tier: crawler
+    project: FANS
+spec:
+  replicas: 1  # 크롤러는 1개만 (중복 방지)
+  selector:
+    matchLabels:
+      app: api-crawler
+  template:
+    metadata:
+      labels:
+        app: api-crawler
+        tier: crawler
+    spec:
+      containers:
+      - name: api-crawler
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/api-crawler:latest
+        ports:
+        - containerPort: 4003
+          name: http
+          protocol: TCP
+
+        # 환경변수
+        env:
+        - name: PORT
+          value: "4003"
+        - name: API_CRAWLER_PORT
+          value: "4003"
+        - name: NODE_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: database-url
+        - name: DB_HOST
+          value: "dw-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USERNAME
+          value: "fans_admin"
+        - name: DB_PASSWORD
+          value: "CHANGE_ME_PLEASE_12345!"
+        - name: DB_NAME
+          value: "fans_db"
+        - name: PGSSLMODE
+          value: "no-verify"
+        - name: NAVER_SEARCH_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: naver-search-client-id
+        - name: NAVER_SEARCH_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: naver-search-client-secret
+        - name: NAVER_CLIENT_ID_2
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: naver-client-id-2
+              optional: true
+        - name: NAVER_CLIENT_SECRET_2
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: naver-client-secret-2
+              optional: true
+        - name: BIAS_AI_SERVICE_URL
+          value: "http://bias-analysis-ai:8002"
+        - name: AUTO_CRAWL
+          value: "true"
+        - name: CRAWL_INTERVAL_MINUTES
+          value: "5"  # 5분마다
+        - name: CRAWL_LIMIT_PER_CATEGORY
+          value: "20"  # 카테고리당 20개
+
+        # 리소스 제한
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+        # Health Check
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4003
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 4003
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-crawler
+  namespace: fans
+  labels:
+    app: api-crawler
+spec:
+  type: ClusterIP
+  ports:
+  - port: 4003
+    targetPort: 4003
+    protocol: TCP
+    name: http
+  selector:
+    app: api-crawler

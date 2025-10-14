@@ -1,0 +1,214 @@
+# DW-FANS Network Resources
+# Subnets, NAT Gateways, Route Tables
+# Owner: DW (DongWon)
+
+# ============================================
+# Subnets (4개)
+# ============================================
+
+# Public Subnet A (AZ-2a)
+resource "aws_subnet" "fans_public_a" {
+  vpc_id                  = data.aws_vpc.existing.id
+  cidr_block              = "10.0.30.32/27"
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name        = "dw-FANS-Public-A"
+    Environment = var.environment
+    Project     = var.project_name
+    Type        = "Public"
+    AZ          = "${var.aws_region}a"
+  }
+}
+
+# Public Subnet B (AZ-2c)
+resource "aws_subnet" "fans_public_b" {
+  vpc_id                  = data.aws_vpc.existing.id
+  cidr_block              = "10.0.30.64/27"
+  availability_zone       = "${var.aws_region}c"
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name        = "dw-FANS-Public-B"
+    Environment = var.environment
+    Project     = var.project_name
+    Type        = "Public"
+    AZ          = "${var.aws_region}c"
+  }
+}
+
+# Private Subnet A (AZ-2a)
+resource "aws_subnet" "fans_private_a" {
+  vpc_id            = data.aws_vpc.existing.id
+  cidr_block        = "10.0.30.128/26"
+  availability_zone = "${var.aws_region}a"
+
+  tags = {
+    Name        = "dw-FANS-Private-A"
+    Environment = var.environment
+    Project     = var.project_name
+    Type        = "Private"
+    AZ          = "${var.aws_region}a"
+  }
+}
+
+# Private Subnet B (AZ-2c)
+resource "aws_subnet" "fans_private_b" {
+  vpc_id            = data.aws_vpc.existing.id
+  cidr_block        = "10.0.30.192/26"
+  availability_zone = "${var.aws_region}c"
+
+  tags = {
+    Name        = "dw-FANS-Private-B"
+    Environment = var.environment
+    Project     = var.project_name
+    Type        = "Private"
+    AZ          = "${var.aws_region}c"
+  }
+}
+
+# ============================================
+# Elastic IPs for NAT Gateways
+# ============================================
+
+resource "aws_eip" "nat_a" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "dw-FANS-NAT-EIP-A"
+    Environment = var.environment
+    Project     = var.project_name
+    Purpose     = "NAT Gateway A"
+  }
+}
+
+resource "aws_eip" "nat_b" {
+  domain = "vpc"
+
+  tags = {
+    Name        = "dw-FANS-NAT-EIP-B"
+    Environment = var.environment
+    Project     = var.project_name
+    Purpose     = "NAT Gateway B"
+  }
+}
+
+# ============================================
+# NAT Gateways (Multi-AZ for High Availability)
+# ============================================
+
+resource "aws_nat_gateway" "nat_a" {
+  allocation_id = aws_eip.nat_a.id
+  subnet_id     = aws_subnet.fans_public_a.id
+
+  tags = {
+    Name        = "dw-FANS-NAT-Gateway-A"
+    Environment = var.environment
+    Project     = var.project_name
+    AZ          = "${var.aws_region}a"
+  }
+
+  depends_on = [data.aws_internet_gateway.existing]
+}
+
+resource "aws_nat_gateway" "nat_b" {
+  allocation_id = aws_eip.nat_b.id
+  subnet_id     = aws_subnet.fans_public_b.id
+
+  tags = {
+    Name        = "dw-FANS-NAT-Gateway-B"
+    Environment = var.environment
+    Project     = var.project_name
+    AZ          = "${var.aws_region}c"
+  }
+
+  depends_on = [data.aws_internet_gateway.existing]
+}
+
+# ============================================
+# Route Tables
+# ============================================
+
+# Public Route Table (IGW 연결)
+# - Public Subnet A, B에서 사용
+# - 인터넷 트래픽을 Internet Gateway로 라우팅
+resource "aws_route_table" "public" {
+  vpc_id = data.aws_vpc.existing.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = data.aws_internet_gateway.existing.id
+  }
+
+  tags = {
+    Name        = "dw-FANS-Public-RT"
+    Environment = var.environment
+    Project     = var.project_name
+    Type        = "Public"
+  }
+}
+
+# Private Route Table A (NAT-A 연결)
+# - Private Subnet A에서 사용
+# - 아웃바운드 트래픽을 NAT Gateway A로 라우팅
+resource "aws_route_table" "private_a" {
+  vpc_id = data.aws_vpc.existing.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat_a.id
+  }
+
+  tags = {
+    Name        = "dw-FANS-Private-A-RT"
+    Environment = var.environment
+    Project     = var.project_name
+    Type        = "Private"
+    AZ          = "${var.aws_region}a"
+  }
+}
+
+# Private Route Table B (NAT-B 연결)
+# - Private Subnet B에서 사용
+# - 아웃바운드 트래픽을 NAT Gateway B로 라우팅
+resource "aws_route_table" "private_b" {
+  vpc_id = data.aws_vpc.existing.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat_b.id
+  }
+
+  tags = {
+    Name        = "dw-FANS-Private-B-RT"
+    Environment = var.environment
+    Project     = var.project_name
+    Type        = "Private"
+    AZ          = "${var.aws_region}c"
+  }
+}
+
+# ============================================
+# Route Table Associations
+# ============================================
+
+resource "aws_route_table_association" "public_a" {
+  subnet_id      = aws_subnet.fans_public_a.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "public_b" {
+  subnet_id      = aws_subnet.fans_public_b.id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private_a" {
+  subnet_id      = aws_subnet.fans_private_a.id
+  route_table_id = aws_route_table.private_a.id
+}
+
+resource "aws_route_table_association" "private_b" {
+  subnet_id      = aws_subnet.fans_private_b.id
+  route_table_id = aws_route_table.private_b.id
+}

@@ -1,0 +1,152 @@
+# FANS Main API
+# Express.js + TypeScript (Port 3000)
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: main-api
+  namespace: fans
+  labels:
+    app: main-api
+    tier: backend
+    project: FANS
+spec:
+  replicas: 1  # 리소스 절약을 위해 1개
+  selector:
+    matchLabels:
+      app: main-api
+  template:
+    metadata:
+      labels:
+        app: main-api
+        tier: backend
+    spec:
+      containers:
+      - name: main-api
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api:latest
+        ports:
+        - containerPort: 3000
+          name: http
+          protocol: TCP
+
+        # 환경변수
+        env:
+        - name: PORT
+          value: "3000"
+        - name: NODE_ENV
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: database-url
+        - name: DB_HOST
+          value: "dw-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USERNAME
+          value: "fans_admin"
+        - name: DB_PASSWORD
+          value: "CHANGE_ME_PLEASE_12345!"
+        - name: DB_NAME
+          value: "fans_db"
+        - name: PGSSLMODE
+          value: "no-verify"
+        - name: AI_SERVICE_URL
+          value: "http://summarize-ai:8000"
+        - name: BIAS_AI_SERVICE_URL
+          value: "http://bias-analysis-ai:8002"
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: redis-url
+        - name: EMAIL_USER
+          valueFrom:
+            secretKeyRef:
+              name: fans-email-secrets
+              key: email-user
+        - name: EMAIL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fans-email-secrets
+              key: email-password
+        - name: CORS_ALLOWED_ORIGINS
+          value: "https://dl8va6yrt5vtj.cloudfront.net,http://dw-FANS-ALB-724115302.ap-northeast-2.elb.amazonaws.com"
+        - name: FRONTEND_URL
+          value: "https://dl8va6yrt5vtj.cloudfront.net"
+
+        # 리소스 제한
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+        # Health Check
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: main-api
+  namespace: fans
+  labels:
+    app: main-api
+spec:
+  type: NodePort
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+    name: http
+  selector:
+    app: main-api
+
+---
+# Horizontal Pod Autoscaler (자동 스케일링)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: main-api-hpa
+  namespace: fans
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: main-api
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
