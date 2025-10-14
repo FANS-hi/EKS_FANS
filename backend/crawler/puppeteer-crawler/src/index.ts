@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import dotenv from 'dotenv';
 import os from 'os';
 import logger from '../shared/config/logger';
+import { SchedulerService } from '../shared/services/schedulerService';
 import { NewsCrawlerService } from './services/newsCrawlerService';
 import { getPuppeteerPool } from './services/puppeteerPoolService';
 
@@ -17,87 +18,11 @@ app.use(express.json());
 let crawlerService: NewsCrawlerService;
 let isInitialized = false;
 
-/**
- * 자동 크롤링 시작 - 방법 1: 환경변수 기반 (수동 정의 방식)
- * docker-compose.yml에서 각 인스턴스마다 REPLICA_INDEX 설정 필요
- */
-function startAutoCrawlingWithEnv(service: NewsCrawlerService): void {
-  const interval = parseInt(process.env.CRAWL_INTERVAL || '180000'); // 기본 3분
-  const replicaIndex = parseInt(process.env.REPLICA_INDEX || '0');
-  const totalReplicas = parseInt(process.env.TOTAL_REPLICAS || '3');
-
-  // 부하 분산: interval을 replica 수로 나눠 시작 시간 균등 분산
-  const startDelay = (interval / totalReplicas) * replicaIndex;
-
-  logger.info(`[Auto-Crawl] 방법: 환경변수 기반`);
-  logger.info(`[Auto-Crawl] 인스턴스: ${replicaIndex}/${totalReplicas}, 간격: ${interval}ms, 지연: ${startDelay}ms`);
-
-  setTimeout(() => {
-    logger.info(`[Instance ${replicaIndex}] 첫 크롤링 시작`);
-
-    // 첫 실행
-    service.crawlAll().catch((error) => {
-      logger.error(`[Instance ${replicaIndex}] 크롤링 오류`, error);
-    });
-
-    // 주기적 실행
-    setInterval(async () => {
-      logger.info(`[Instance ${replicaIndex}] 자동 크롤링 시작`);
-      try {
-        await service.crawlAll();
-      } catch (error) {
-        logger.error(`[Instance ${replicaIndex}] 크롤링 오류`, error);
-      }
-    }, interval);
-  }, startDelay);
-}
-
-/**
- * 자동 크롤링 시작 - 방법 2: 랜덤 지연 (자동 확장 방식)
- * docker-compose scale 사용 가능, 완벽한 분산은 아니지만 확장 용이
- */
-function startAutoCrawlingWithRandom(service: NewsCrawlerService): void {
-  const interval = parseInt(process.env.CRAWL_INTERVAL || '180000'); // 기본 3분
-  const totalReplicas = parseInt(process.env.TOTAL_REPLICAS || '3');
-
-  // 랜덤 지연: 0 ~ (interval / totalReplicas) 사이
-  const maxDelay = interval / totalReplicas;
-  const startDelay = Math.floor(Math.random() * maxDelay);
-
-  logger.info(`[Auto-Crawl] 방법: 랜덤 지연 기반`);
-  logger.info(`[Auto-Crawl] 호스트: ${os.hostname()}, 간격: ${interval}ms, 랜덤 지연: ${startDelay}ms`);
-
-  setTimeout(() => {
-    const instanceId = os.hostname().substring(0, 8);
-    logger.info(`[Instance ${instanceId}] 첫 크롤링 시작`);
-
-    // 첫 실행
-    service.crawlAll().catch((error) => {
-      logger.error(`[Instance ${instanceId}] 크롤링 오류`, error);
-    });
-
-    // 주기적 실행
-    setInterval(async () => {
-      logger.info(`[Instance ${instanceId}] 자동 크롤링 시작`);
-      try {
-        await service.crawlAll();
-      } catch (error) {
-        logger.error(`[Instance ${instanceId}] 크롤링 오류`, error);
-      }
-    }, interval);
-  }, startDelay);
-}
-
-/**
- * 자동 크롤링 시작 (방식 선택)
- */
-function startAutoCrawling(service: NewsCrawlerService): void {
-  // 방법 1: 환경변수 기반 (완벽한 시간차, 수동 정의)
-  startAutoCrawlingWithEnv(service);
-
-  // 방법 2: 랜덤 지연 (자동 확장, 대략적 분산)
-  // startAutoCrawlingWithRandom(service);
-}
+// 스케줄러 인스턴스 생성
+const schedulerService = new SchedulerService(
+  undefined,
+  'Puppeteer Crawler'
+);
 
 /**
  * 헬스체크
@@ -207,7 +132,16 @@ async function startServer() {
 
     // 자동 크롤링 활성화
     if (process.env.AUTO_CRAWL === 'true') {
-      startAutoCrawling(crawlerService);
+      logger.info(`\n⏰ 자동 크롤링 활성화`);
+
+      // 크롤링 함수 설정
+      schedulerService.setCrawlFunction(async () => {
+        await crawlerService.crawlAll();
+      }, 'Puppeteer Crawler');
+
+      schedulerService.start({
+        enabled: true
+      });
     }
   } catch (error) {
     logger.error('서버 시작 실패', error);

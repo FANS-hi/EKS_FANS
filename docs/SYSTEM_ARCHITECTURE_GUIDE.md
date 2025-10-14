@@ -296,11 +296,11 @@ GET  /api/market/summary    # 시장 요약 (KOSPI, KOSDAQ 등)
 #### 🤖 요약 AI 서비스 (Summarize AI)
 **디렉토리**: `backend/ai/summarize-ai/`
 **포트**: 8000
-**기술 스택**: Python + FastAPI + Gemini API
+**기술 스택**: Python + FastAPI + Transformers (T5)
 **주요 기능**:
 - 뉴스 기사 자동 요약 생성
-- Gemini 1.5 Flash API 활용
-- 3-5문장 요약 생성
+- Hugging Face T5 모델 (eenzeenee/t5-base-korean-summarization) 활용
+- 로컬 AI 모델로 빠른 요약 생성
 
 #### 🎯 편향성 분석 AI 서비스 (Bias Analysis AI)
 **디렉토리**: `backend/ai/bias-analysis-ai/`
@@ -392,7 +392,6 @@ DB_PASSWORD=fans_password
 DB_NAME=fans_db
 
 JWT_SECRET=your-jwt-secret
-GEMINI_API_KEY=your-gemini-key
 
 KAKAO_CLIENT_ID=your-kakao-id
 NAVER_CLIENT_ID=your-naver-id

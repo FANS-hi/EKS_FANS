@@ -8,11 +8,17 @@ import express from 'express';
 import cors from 'cors';
 import { AppDataSource } from '../shared/config/database';
 import { newsCrawlerService } from './services/newsCrawlerService';
-import { schedulerService } from './services/schedulerService';
+import { SchedulerService } from '../shared/services/schedulerService';
 import logger from '../shared/config/logger';
 
 const app = express();
 const PORT = parseInt(process.env.API_CRAWLER_PORT || '4003', 10);
+
+// 스케줄러 인스턴스 생성
+const schedulerService = new SchedulerService(
+  undefined,
+  'API Crawler'
+);
 
 app.use(cors());
 app.use(express.json());
@@ -145,13 +151,24 @@ async function startServer() {
       // 자동 크롤링 활성화 (환경변수로 제어)
       const autoStart = process.env.AUTO_CRAWL === 'true';
       if (autoStart) {
-        const intervalMinutes = parseInt(process.env.CRAWL_INTERVAL_MINUTES || '5');
-        const limitPerCategory = parseInt(process.env.CRAWL_LIMIT_PER_CATEGORY || '5');
+        const limitPerCategory = parseInt(process.env.CRAWL_LIMIT_PER_CATEGORY || '20');
 
-        logger.info(`\n⏰ 자동 크롤링 활성화 - ${intervalMinutes}분마다 실행 (카테고리당 ${limitPerCategory}개)`);
+        logger.info(`\n⏰ 자동 크롤링 활성화 (카테고리당 ${limitPerCategory}개)`);
+
+        // 크롤링 함수 설정
+        schedulerService.setCrawlFunction(async () => {
+          const results = await newsCrawlerService.crawlAllCategories(limitPerCategory);
+
+          let totalCollected = 0;
+          for (const [category, articles] of Object.entries(results)) {
+            totalCollected += articles.length;
+            logger.info(`  ✓ ${category}: ${articles.length}개`);
+          }
+
+          logger.info(`📊 총 ${totalCollected}개 수집`);
+        }, 'API Crawler');
+
         schedulerService.start({
-          intervalMinutes,
-          limitPerCategory,
           enabled: true
         });
       } else {

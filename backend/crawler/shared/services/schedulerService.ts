@@ -1,29 +1,66 @@
-import { newsCrawlerService } from './newsCrawlerService';
-import logger from '../../shared/config/logger';
+import logger from '../config/logger';
 
-interface SchedulerConfig {
+export interface SchedulerConfig {
   intervalMinutes: number;
-  limitPerCategory: number;
   enabled: boolean;
 }
 
-class SchedulerService {
+type CrawlFunction = () => Promise<any>;
+
+/**
+ * 범용 스케줄러 서비스
+ * API Crawler와 Puppeteer Crawler 모두에서 사용 가능
+ * 환경변수 CRAWL_INTERVAL_MINUTES로 간격 통일 설정
+ */
+export class SchedulerService {
   private intervalId: NodeJS.Timeout | null = null;
   private config: SchedulerConfig = {
-    intervalMinutes: 5, // 5분마다 실행
-    limitPerCategory: 20, // 카테고리당 20개씩 수집
+    intervalMinutes: parseInt(process.env.CRAWL_INTERVAL_MINUTES || '5'), // 환경변수에서 읽음
     enabled: false
   };
   private isRunning = false;
   private lastRunTime: Date | null = null;
   private nextRunTime: Date | null = null;
+  private crawlFunction: CrawlFunction | null = null;
+  private serviceName: string = 'Crawler';
+
+  /**
+   * 생성자
+   * @param crawlFunction 크롤링 함수
+   * @param serviceName 서비스 이름 (로그용)
+   */
+  constructor(crawlFunction?: CrawlFunction, serviceName?: string) {
+    if (crawlFunction) {
+      this.crawlFunction = crawlFunction;
+    }
+    if (serviceName) {
+      this.serviceName = serviceName;
+    }
+
+    // 환경변수 로그
+    logger.info(`[${this.serviceName}] Scheduler initialized with interval: ${this.config.intervalMinutes} minutes`);
+  }
+
+  /**
+   * 크롤링 함수 설정
+   */
+  setCrawlFunction(crawlFunction: CrawlFunction, serviceName?: string): void {
+    this.crawlFunction = crawlFunction;
+    if (serviceName) {
+      this.serviceName = serviceName;
+    }
+  }
 
   /**
    * 스케줄러 시작
    */
   start(config?: Partial<SchedulerConfig>): void {
+    if (!this.crawlFunction) {
+      throw new Error('크롤링 함수가 설정되지 않았습니다. setCrawlFunction()을 먼저 호출하세요.');
+    }
+
     if (this.config.enabled) {
-      logger.info('📅 뉴스 크롤링 스케줄러가 이미 실행 중입니다.');
+      logger.info(`📅 ${this.serviceName} 스케줄러가 이미 실행 중입니다.`);
       return;
     }
 
@@ -35,8 +72,7 @@ class SchedulerService {
     this.config.enabled = true;
     const intervalMs = this.config.intervalMinutes * 60 * 1000;
 
-    logger.info(`🕒 뉴스 크롤링 스케줄러 시작: ${this.config.intervalMinutes}분마다 실행`);
-    logger.info(`📊 카테고리당 수집 개수: ${this.config.limitPerCategory}개`);
+    logger.info(`🕒 ${this.serviceName} 스케줄러 시작: ${this.config.intervalMinutes}분마다 실행`);
 
     // 첫 실행은 즉시
     this.runCrawling();
@@ -59,7 +95,7 @@ class SchedulerService {
     }
     this.config.enabled = false;
     this.nextRunTime = null;
-    logger.info('🛑 뉴스 크롤링 스케줄러 중지됨');
+    logger.info(`🛑 ${this.serviceName} 스케줄러 중지됨`);
   }
 
   /**
@@ -67,7 +103,12 @@ class SchedulerService {
    */
   private async runCrawling(): Promise<void> {
     if (this.isRunning) {
-      logger.info('⏳ 이전 크롤링이 아직 실행 중입니다. 건너뜁니다.');
+      logger.info(`⏳ ${this.serviceName}: 이전 크롤링이 아직 실행 중입니다. 건너뜁니다.`);
+      return;
+    }
+
+    if (!this.crawlFunction) {
+      logger.error(`❌ ${this.serviceName}: 크롤링 함수가 설정되지 않았습니다.`);
       return;
     }
 
@@ -75,19 +116,13 @@ class SchedulerService {
     this.lastRunTime = new Date();
 
     try {
-      logger.info(`\n📰 [${ this.lastRunTime.toLocaleString('ko-KR')}] 뉴스 크롤링 시작...`);
+      logger.info(`\n📰 [${this.lastRunTime.toLocaleString('ko-KR')}] ${this.serviceName} 크롤링 시작...`);
 
-      const results = await newsCrawlerService.crawlAllCategories(this.config.limitPerCategory);
+      await this.crawlFunction();
 
-      let totalCollected = 0;
-      for (const [category, articles] of Object.entries(results)) {
-        totalCollected += articles.length;
-        logger.info(`  ✓ ${category}: ${articles.length}개`);
-      }
-
-      logger.info(`✅ 크롤링 완료 - 총 ${totalCollected}개 수집\n`);
+      logger.info(`✅ ${this.serviceName} 크롤링 완료\n`);
     } catch (error) {
-      logger.error('❌ 크롤링 실패:', error);
+      logger.error(`❌ ${this.serviceName} 크롤링 실패:`, error);
     } finally {
       this.isRunning = false;
       this.updateNextRunTime();
@@ -139,5 +174,3 @@ class SchedulerService {
     }
   }
 }
-
-export const schedulerService = new SchedulerService();
