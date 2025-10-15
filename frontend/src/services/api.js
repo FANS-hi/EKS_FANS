@@ -1,8 +1,5 @@
-// API 기본 설정
-const API_BASE_URL = process.env.REACT_APP_API_BASE ||
-  (process.env.NODE_ENV === 'production'
-    ? 'https://minwoo.shop/api'
-    : '/api');
+// API 기본 설정 (CloudFront에서 /api/*를 프록시)
+const API_BASE_URL = '';
 
 // 공통 fetch 함수
 const fetchApi = async (endpoint) => {

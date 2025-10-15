@@ -146,8 +146,41 @@ backend/ai/bias-analysis-ai/ai-training/
 # === Infrastructure (Terraform) ===
 infrastructure/
 
+# Terraform files
+**/.terraform/
+**/.terraform.lock.hcl
+**/terraform.tfstate
+**/terraform.tfstate.backup
+**/terraform.tfstate.*.backup
+**/.terraformrc
+**/terraform.rc
+**/*.tfvars
+**/crash.log
+**/crash.*.log
+**/.terraform.tfstate.lock.info
+**/override.tf
+**/override.tf.json
+**/*_override.tf
+**/*_override.tf.json
+**/.terragrunt-cache/
+
+# Kubernetes generated files
+**/*.kubeconfig
+**/kubeconfig
+**/config.yaml
+
 # === Work Log (개인 작업 기록) ===
 work_log.md
+
+# === Python Cache ===
+**/__pycache__/
+*.pyc
+*.pyo
+
+# === Package Lock (Git LFS 문제 방지) ===
+**/package-lock.json
+**/package.json
+**/tsconfig.json
 
 # Puppeteer Crawler
 backend/crawler/puppeteer-crawler/node_modules/
