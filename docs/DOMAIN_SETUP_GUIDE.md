@@ -12,7 +12,7 @@
 
 ## 사전 요구사항
 
-- 도메인 구매 (예: `example.com`)
+- 도메인 구매 (예: `www.fans.ai.kr`)
 - AWS CLI 설정 완료
 - Terraform 설치 완료
 - 기존 인프라가 배포되어 있어야 함
@@ -28,7 +28,7 @@
 # AWS 콘솔 → Route 53 → 도메인 등록 → 도메인 검색 및 구매
 
 # 구매 완료 후 호스팅 영역 자동 생성됨
-aws route53 list-hosted-zones --query "HostedZones[?Name=='example.com.'].Id" --output text
+aws route53 list-hosted-zones --query "HostedZones[?Name=='fans.ai.kr.'].Id" --output text
 ```
 
 ### Option 2: 외부에서 구매한 도메인 사용
@@ -36,7 +36,7 @@ aws route53 list-hosted-zones --query "HostedZones[?Name=='example.com.'].Id" --
 ```bash
 # Route 53 호스팅 영역 생성
 aws route53 create-hosted-zone \
-  --name example.com \
+  --name fans.ai.kr \
   --caller-reference $(date +%s) \
   --hosted-zone-config Comment="FANS Project Domain"
 
@@ -100,15 +100,15 @@ aws route53 list-resource-record-sets \
 # ACM 인증서 요청 (us-east-1 리전)
 aws acm request-certificate \
   --region us-east-1 \
-  --domain-name example.com \
-  --subject-alternative-names "*.example.com" \
+  --domain-name www.fans.ai.kr \
+  --subject-alternative-names "*.fans.ai.kr" \
   --validation-method DNS \
   --tags Key=Project,Value=FANS Key=Environment,Value=production
 
 # 인증서 ARN 저장
 CERT_ARN=$(aws acm list-certificates \
   --region us-east-1 \
-  --query "CertificateSummaryList[?DomainName=='example.com'].CertificateArn" \
+  --query "CertificateSummaryList[?DomainName=='www.fans.ai.kr'].CertificateArn" \
   --output text)
 
 echo $CERT_ARN
@@ -127,7 +127,7 @@ aws acm describe-certificate \
 
 # 결과 예시:
 # --------------------------------
-# |   _abc123.example.com        |
+# |   _abc123.fans.ai.kr        |
 # |   CNAME                      |
 # |   _xyz456.acm-validations... |
 # --------------------------------
@@ -141,7 +141,7 @@ aws acm describe-certificate \
 
 # Hosted Zone ID 확인
 HOSTED_ZONE_ID=$(aws route53 list-hosted-zones \
-  --query "HostedZones[?Name=='example.com.'].Id" \
+  --query "HostedZones[?Name=='fans.ai.kr.'].Id" \
   --output text | cut -d'/' -f3)
 
 # DNS 레코드 생성 (자동)
@@ -203,7 +203,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   price_class         = "PriceClass_200"
 
   # ✅ 추가: 커스텀 도메인
-  aliases             = ["example.com", "www.example.com"]  # 여기에 도메인 입력
+  aliases             = ["www.fans.ai.kr"]  # 여기에 도메인 입력
 ```
 
 #### Line 176-179: viewer_certificate 블록 교체
@@ -221,7 +221,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 ```
 
-**완전한 예시** (example.com 사용 시):
+**완전한 예시** (www.fans.ai.kr 사용 시):
 ```terraform
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
@@ -229,7 +229,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   comment             = "dw-FANS Frontend Distribution"
   default_root_object = "index.html"
   price_class         = "PriceClass_200"
-  aliases             = ["fans.example.com", "www.fans.example.com"]  # ← 수정
+  aliases             = ["www.fans.ai.kr"]  # ← 수정
 
   # ... (중간 생략) ...
 
@@ -257,7 +257,7 @@ resource "aws_cloudfront_distribution" "frontend" {
 # 기존 출력에 추가
 output "custom_domain_url" {
   description = "Custom domain URL"
-  value       = "https://fans.example.com"  # ← 여기에 도메인 입력
+  value       = "https://www.fans.ai.kr"  # ← 여기에 도메인 입력
 }
 ```
 
@@ -275,7 +275,7 @@ echo $CF_DOMAIN
 
 # Hosted Zone ID 확인
 HOSTED_ZONE_ID=$(aws route53 list-hosted-zones \
-  --query "HostedZones[?Name=='example.com.'].Id" \
+  --query "HostedZones[?Name=='fans.ai.kr.'].Id" \
   --output text | cut -d'/' -f3)
 
 # CloudFront Distribution ID 확인
@@ -283,32 +283,14 @@ CF_DIST_ID=$(aws cloudfront list-distributions \
   --query "DistributionList.Items[?Comment=='dw-FANS Frontend Distribution'].Id" \
   --output text)
 
-# A 레코드 추가 (example.com)
+# A 레코드 추가 (www.fans.ai.kr)
 aws route53 change-resource-record-sets \
   --hosted-zone-id $HOSTED_ZONE_ID \
   --change-batch '{
     "Changes": [{
       "Action": "CREATE",
       "ResourceRecordSet": {
-        "Name": "fans.example.com",
-        "Type": "A",
-        "AliasTarget": {
-          "HostedZoneId": "Z2FDTNDATAQYW2",
-          "DNSName": "'$CF_DOMAIN'",
-          "EvaluateTargetHealth": false
-        }
-      }
-    }]
-  }'
-
-# A 레코드 추가 (www.example.com)
-aws route53 change-resource-record-sets \
-  --hosted-zone-id $HOSTED_ZONE_ID \
-  --change-batch '{
-    "Changes": [{
-      "Action": "CREATE",
-      "ResourceRecordSet": {
-        "Name": "www.fans.example.com",
+        "Name": "www.fans.ai.kr",
         "Type": "A",
         "AliasTarget": {
           "HostedZoneId": "Z2FDTNDATAQYW2",
@@ -336,7 +318,7 @@ terraform plan
 
 # 주요 변경사항:
 # ~ aws_cloudfront_distribution.frontend
-#   + aliases = ["fans.example.com", "www.fans.example.com"]
+#   + aliases = ["www.fans.ai.kr"]
 #   ~ viewer_certificate {
 #       + acm_certificate_arn = "arn:aws:acm:us-east-1:..."
 #       - cloudfront_default_certificate = true
@@ -368,9 +350,9 @@ REACT_APP_AI_SERVICE_URL=
 **수정할 부분** (Line 75-78):
 ```yaml
         - name: CORS_ALLOWED_ORIGINS
-          value: "https://fans.example.com,https://www.fans.example.com,https://dl8va6yrt5vtj.cloudfront.net"  # ← 도메인 추가
+          value: "https://www.fans.ai.kr,https://dl8va6yrt5vtj.cloudfront.net"  # ← 도메인 추가
         - name: FRONTEND_URL
-          value: "https://fans.example.com"  # ← 메인 도메인으로 변경
+          value: "https://www.fans.ai.kr"  # ← 메인 도메인으로 변경
 ```
 
 **변경사항 적용**:
@@ -391,28 +373,28 @@ kubectl rollout status deployment/main-api -n fans
 
 ```bash
 # DNS 전파 확인 (1-5분 소요)
-dig fans.example.com
+dig www.fans.ai.kr
 
 # 또는
-nslookup fans.example.com
+nslookup www.fans.ai.kr
 
 # 결과에 CloudFront IP가 나타나면 성공
 # 예시:
-# fans.example.com.  300  IN  A  13.224.XXX.XXX
-# fans.example.com.  300  IN  A  13.224.YYY.YYY
+# www.fans.ai.kr.  300  IN  A  13.224.XXX.XXX
+# www.fans.ai.kr.  300  IN  A  13.224.YYY.YYY
 ```
 
 ### 5. HTTPS 접속 테스트
 
 ```bash
 # CloudFront를 통한 접속 테스트
-curl -s "https://fans.example.com" | grep -o "<title>.*</title>"
+curl -s "https://www.fans.ai.kr" | grep -o "<title>.*</title>"
 
 # 결과 예시:
 # <title>FANS - Financial & Analytics News Service</title>
 
 # API 엔드포인트 테스트
-curl -s "https://fans.example.com/api/health" | jq
+curl -s "https://www.fans.ai.kr/api/health" | jq
 
 # 결과 예시:
 # {
@@ -425,17 +407,17 @@ curl -s "https://fans.example.com/api/health" | jq
 
 ```bash
 # SSL 인증서 확인
-openssl s_client -connect fans.example.com:443 -servername fans.example.com < /dev/null 2>/dev/null | openssl x509 -noout -text | grep -A 2 "Subject:"
+openssl s_client -connect www.fans.ai.kr:443 -servername www.fans.ai.kr < /dev/null 2>/dev/null | openssl x509 -noout -text | grep -A 2 "Subject:"
 
 # 결과 예시:
-# Subject: CN=fans.example.com
+# Subject: CN=www.fans.ai.kr
 # Subject Alternative Name:
-#   DNS:fans.example.com, DNS:*.example.com
+#   DNS:www.fans.ai.kr, DNS:*.fans.ai.kr
 ```
 
 ### 7. 브라우저 테스트
 
-1. 브라우저에서 `https://fans.example.com` 접속
+1. 브라우저에서 `https://www.fans.ai.kr` 접속
 2. 주소창에 자물쇠 아이콘 확인 (HTTPS 정상 작동)
 3. 개발자 도구 (F12) → Network 탭
 4. 뉴스 피드가 정상적으로 로드되는지 확인
@@ -447,7 +429,7 @@ openssl s_client -connect fans.example.com:443 -servername fans.example.com < /d
 
 | 파일 경로 | 수정 위치 | 변경 내용 |
 |-----------|----------|-----------|
-| **frontend.tf** | Line 89 | `aliases = ["fans.example.com", "www.fans.example.com"]` 추가 |
+| **frontend.tf** | Line 89 | `aliases = ["www.fans.ai.kr"]` 추가 |
 | **frontend.tf** | Line 176-179 | `viewer_certificate` 블록을 ACM 인증서 사용으로 변경 |
 | **main-api.yaml** | Line 75 | `CORS_ALLOWED_ORIGINS`에 커스텀 도메인 추가 |
 | **main-api.yaml** | Line 77 | `FRONTEND_URL`을 커스텀 도메인으로 변경 |
@@ -469,7 +451,7 @@ cd infra/terraform
 grep -n "aliases" frontend.tf
 
 # 없다면 추가:
-# aliases = ["fans.example.com", "www.fans.example.com"]
+# aliases = ["www.fans.ai.kr"]
 
 terraform apply
 ```
@@ -496,8 +478,8 @@ aws acm describe-certificate \
 # 3. 필요시 새 인증서 발급 (us-east-1에서)
 aws acm request-certificate \
   --region us-east-1 \
-  --domain-name fans.example.com \
-  --subject-alternative-names "*.example.com" \
+  --domain-name www.fans.ai.kr \
+  --subject-alternative-names "*.fans.ai.kr" \
   --validation-method DNS
 ```
 
@@ -510,12 +492,12 @@ aws acm request-certificate \
 **해결**:
 ```bash
 # 1. Name Server가 올바른지 확인
-dig example.com NS
+dig fans.ai.kr NS
 
 # 2. Route 53 레코드 확인
 aws route53 list-resource-record-sets \
   --hosted-zone-id [ZONE-ID] \
-  --query "ResourceRecordSets[?Name=='fans.example.com.']"
+  --query "ResourceRecordSets[?Name=='www.fans.ai.kr.']"
 
 # 3. 최대 48시간 대기 (보통 1-2시간)
 ```
@@ -533,7 +515,7 @@ cd infra/kubernetes/apps
 vi main-api.yaml
 
 # CORS_ALLOWED_ORIGINS에 도메인 추가
-# value: "https://fans.example.com,https://www.fans.example.com,..."
+# value: "https://www.fans.ai.kr,..."
 
 kubectl apply -f main-api.yaml
 kubectl rollout restart deployment/main-api -n fans

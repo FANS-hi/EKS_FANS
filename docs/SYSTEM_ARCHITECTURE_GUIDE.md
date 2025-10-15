@@ -20,7 +20,7 @@
 |--------|------|----------|------|-----------|
 | `id` | BIGINT | PK, AUTO_INCREMENT | 사용자 고유 ID | 1, 2, 3... |
 | `username` | VARCHAR(50) | UNIQUE, NOT NULL | 사용자명 | "john_doe", "user123" |
-| `email` | VARCHAR(100) | UNIQUE, NOT NULL | 이메일 주소 | "user@example.com" |
+| `email` | VARCHAR(100) | UNIQUE, NOT NULL | 이메일 주소 | "user@fans.ai.kr" |
 | `password_hash` | VARCHAR(255) | NOT NULL | 암호화된 비밀번호 | "$2b$10$xyz..." |
 | `user_name` | VARCHAR(100) | NULLABLE | 실명/닉네임 | "홍길동", "John Doe" |
 | `tel` | VARCHAR(20) | NULLABLE | 전화번호 | "010-1234-5678" |
@@ -74,8 +74,8 @@
 | `title` | VARCHAR(500) | NOT NULL | 기사 제목 | "정부, 새로운 정책 발표" |
 | `content` | TEXT | NULLABLE | 기사 본문 | "오늘 정부는 새로운 정책을..." |
 | `ai_summary` | TEXT | NULLABLE | AI 요약문 | "정부가 발표한 새 정책의 핵심은..." |
-| `url` | VARCHAR(1000) | UNIQUE, NULLABLE | 원본 기사 URL | "https://news.example.com/article/123" |
-| `image_url` | VARCHAR(1000) | NULLABLE | 대표 이미지 URL | "https://img.example.com/news123.jpg" |
+| `url` | VARCHAR(1000) | UNIQUE, NULLABLE | 원본 기사 URL | "https://www.yna.co.kr/article/123" |
+| `image_url` | VARCHAR(1000) | NULLABLE | 대표 이미지 URL | "https://www.fans.ai.kr/images/news123.jpg" |
 | `source_id` | BIGINT | FK, NOT NULL | 언론사 ID | 1, 2, 3... |
 | `category_id` | BIGINT | FK, NOT NULL | 카테고리 ID | 1, 2, 3... |
 | `journalist` | VARCHAR(100) | NULLABLE | 기자명 | "홍길동 기자", "Jane Smith" |
