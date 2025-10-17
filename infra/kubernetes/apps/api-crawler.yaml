@@ -51,7 +51,7 @@ spec:
         - name: DB_USERNAME
           value: "fans_admin"
         - name: DB_PASSWORD
-          value: "CHANGE_ME_PLEASE_12345!"
+          value: "fans_password"
         - name: DB_NAME
           value: "fans_db"
         - name: PGSSLMODE

@@ -2,24 +2,31 @@
 
 EKS 클러스터에 배포할 Kubernetes 리소스 관리
 
+> **📖 전체 시스템 아키텍처는 [SYSTEM_ARCHITECTURE_2025.md](../../docs/SYSTEM_ARCHITECTURE_2025.md)를 참고하세요.**
+
 ## 📂 디렉토리 구조
 
 ```
 kubernetes/
 ├── base/              # 기본 리소스
 │   ├── namespace.yaml
-│   └── configmap.yaml
+│   ├── configmap.yaml
+│   └── secrets.yaml
 │
-├── monitoring/        # 모니터링 스택
-│   ├── prometheus-values.yaml
-│   └── grafana-values.yaml
+├── apps/             # FANS 애플리케이션 Deployments
+│   ├── main-api.yaml           # Main API (port 3000)
+│   ├── unified-crawler.yaml    # Unified Crawler v2 (port 4005)
+│   ├── summarize-ai.yaml       # Summarize AI (port 8000)
+│   └── bias-analysis-ai.yaml   # Bias Analysis AI (port 8002)
 │
-└── apps/             # FANS 애플리케이션
-    ├── main-api.yaml
-    ├── summarize-ai.yaml
-    ├── bias-analysis-ai.yaml
-    ├── api-crawler.yaml
-    └── rss-crawler.yaml
+├── jobs/             # CronJobs (스케줄링)
+│   └── unified-crawler-job.yaml  # 크롤러 정기 실행 (매 1분)
+│
+├── ingress.yaml      # Ingress 설정 (ALB Controller)
+│
+└── monitoring/       # 모니터링 스택 (선택사항)
+    ├── prometheus-values.yaml
+    └── grafana-values.yaml
 ```
 
 ## 🚀 배포 순서
@@ -138,14 +145,41 @@ aws ecr get-login-password --region ap-northeast-2 | \
 kubectl logs <pod-name> -n fans --previous
 ```
 
-## 📝 TODO
+## 📝 현재 배포 상태
 
+### ✅ 배포 완료
+- [x] Namespace (fans)
+- [x] ConfigMaps (DB 연결 정보)
+- [x] Secrets (API Keys, OAuth Credentials)
+- [x] Deployments (Main API, Crawler, AI Services)
+- [x] Services (ClusterIP)
+- [x] Ingress (ALB Controller)
+- [x] CronJobs (Crawler 스케줄링)
+
+### 🔄 진행 중
 - [ ] HPA (Horizontal Pod Autoscaler) 설정
-- [ ] Ingress 설정
-- [ ] Secret 관리 (Sealed Secrets 또는 External Secrets)
-- [ ] Custom Grafana 대시보드 추가
+- [ ] Prometheus/Grafana 모니터링 스택
+- [ ] Custom Grafana 대시보드
+
+### 📊 리소스 현황
+
+| 서비스 | Replicas | CPU Request | Memory Request | Status |
+|--------|----------|-------------|----------------|--------|
+| Main API | 2 | 250m | 512Mi | ✅ Running |
+| Unified Crawler | 2 | 500m | 1Gi | ✅ Running |
+| Summarize AI | 1 | 250m | 512Mi | ✅ Running |
+| Bias Analysis AI | 1 | 250m | 512Mi | ✅ Running |
+
+### 🔗 관련 문서
+
+- [시스템 아키텍처 (2025)](../../docs/SYSTEM_ARCHITECTURE_2025.md) - 전체 시스템 설계
+- [Terraform 가이드](../terraform/README.md) - AWS 인프라 구축
+- [Crawler v2 가이드](../../backend/crawler/crawler-v2/README.md) - 크롤러 상세
+- [데이터베이스 스키마](../../docs/DATABASE.md) - DB 구조
 
 ---
 
 **작성일**: 2025-01-15
+**최종 업데이트**: 2025-10-17
 **팀**: FANS
+**상태**: EKS 운영 중

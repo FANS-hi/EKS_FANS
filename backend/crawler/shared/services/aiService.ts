@@ -40,7 +40,7 @@ export async function summarizeArticle(articleId: number, content: string): Prom
 /**
  * AI 편향성 분석 서비스
  */
-export async function analyzeBias(articleId: number, content: string): Promise<void> {
+export async function analyzeBias(articleId: number, content: string, sourceName?: string): Promise<void> {
   if (!content || content.length < 100) {
     logger.info(`[편향성 분석 스킵] 기사 ${articleId}: 내용이 너무 짧음`);
     return;
@@ -49,10 +49,22 @@ export async function analyzeBias(articleId: number, content: string): Promise<v
   try {
     const BIAS_AI_URL = process.env.BIAS_AI_URL || 'http://bias-analysis-ai:8002';
 
+    // 언론사 이름이 없으면 DB에서 조회
+    let sourceNameToUse = sourceName;
+    if (!sourceNameToUse) {
+      const newsRepo = AppDataSource.getRepository('NewsArticle');
+      const article = await newsRepo.findOne({
+        where: { id: articleId },
+        relations: ['source']
+      });
+      sourceNameToUse = article?.source?.name || '기타';
+    }
+
     // bias-analysis-ai 서비스 호출
     const response = await axios.post(`${BIAS_AI_URL}/analyze/full`, {
       text: content,
-      article_id: articleId
+      article_id: articleId,
+      source_name: sourceNameToUse
     }, {
       timeout: 30000 // 30초 타임아웃
     });
@@ -61,17 +73,16 @@ export async function analyzeBias(articleId: number, content: string): Promise<v
       // BiasAnalysis 엔티티에 저장
       const biasRepo = AppDataSource.getRepository('BiasAnalysis');
 
-      const political = response.data.political;
       const biasAnalysis = biasRepo.create({
         articleId: articleId,
-        biasScore: political?.bias_score || 0,
-        politicalLeaning: political?.leaning || 'neutral',
-        confidence: response.data.sentiment?.confidence || 0,
+        biasScore: response.data.bias_score || 0,
+        politicalLeaning: response.data.political_leaning || '중립',
+        confidence: response.data.confidence || 0,
         analysisData: response.data
       });
 
       await biasRepo.save(biasAnalysis);
-      logger.info(`[편향성 분석 완료] 기사 ${articleId}: 점수 ${political?.bias_score || 0}`);
+      logger.info(`[편향성 분석 완료] 기사 ${articleId} (${sourceNameToUse}): 점수 ${response.data.bias_score || 0}`);
     }
   } catch (error: any) {
     logger.error(`[편향성 분석 오류] 기사 ${articleId}:`, error?.message || error);

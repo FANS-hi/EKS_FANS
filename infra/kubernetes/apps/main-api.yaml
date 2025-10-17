@@ -48,7 +48,7 @@ spec:
         - name: DB_USERNAME
           value: "fans_admin"
         - name: DB_PASSWORD
-          value: "CHANGE_ME_PLEASE_12345!"
+          value: "fans_password"
         - name: DB_NAME
           value: "fans_db"
         - name: PGSSLMODE
@@ -73,9 +73,39 @@ spec:
               name: fans-email-secrets
               key: email-password
         - name: CORS_ALLOWED_ORIGINS
-          value: "https://dl8va6yrt5vtj.cloudfront.net,http://dw-FANS-ALB-724115302.ap-northeast-2.elb.amazonaws.com"
+          value: "https://www.fans.ai.kr"
         - name: FRONTEND_URL
-          value: "https://dl8va6yrt5vtj.cloudfront.net"
+          value: "https://www.fans.ai.kr"
+        - name: KAKAO_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: fans-kakao-secrets
+              key: kakao-client-id
+        - name: KAKAO_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fans-kakao-secrets
+              key: kakao-client-secret
+        - name: KAKAO_REDIRECT_URI
+          valueFrom:
+            secretKeyRef:
+              name: fans-kakao-secrets
+              key: kakao-redirect-uri
+        - name: NAVER_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: fans-naver-secrets
+              key: naver-client-id
+        - name: NAVER_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: fans-naver-secrets
+              key: naver-client-secret
+        - name: NAVER_REDIRECT_URI
+          valueFrom:
+            secretKeyRef:
+              name: fans-naver-secrets
+              key: naver-redirect-uri
 
         # 리소스 제한
         resources:
@@ -91,7 +121,7 @@ spec:
           httpGet:
             path: /health
             port: 3000
-          initialDelaySeconds: 30
+          initialDelaySeconds: 120
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
@@ -100,7 +130,7 @@ spec:
           httpGet:
             path: /health
             port: 3000
-          initialDelaySeconds: 10
+          initialDelaySeconds: 60
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3

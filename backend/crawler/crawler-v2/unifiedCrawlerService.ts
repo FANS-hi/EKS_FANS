@@ -234,7 +234,7 @@ export class UnifiedCrawlerService {
         // 각 기사 파싱
         for (const url of articleUrls.slice(0, limitPerSection)) {
           try {
-            const article = await this.naverParser.parseArticle(page, url);
+            const article = await this.naverParser.parseArticle(page, url, sectionUrl);
 
             if (article && this.naverParser.validateArticle(article)) {
               await this.saveArticle(article);

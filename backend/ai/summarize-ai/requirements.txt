@@ -8,6 +8,7 @@ python-multipart==0.0.6
 httpx==0.25.2
 
 # AI/ML Libraries (transformers 먼저 설치)
+numpy<2.0  # NumPy 2.0 호환성 문제 방지
 transformers==4.35.2
 tokenizers==0.15.0
 

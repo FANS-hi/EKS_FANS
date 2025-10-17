@@ -4,8 +4,10 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import session from 'express-session';
+import { createClient } from 'redis';
 import dotenv from 'dotenv';
 import path from 'path';
+const RedisStore = require('connect-redis').default || require('connect-redis');
 import { AppDataSource } from './config/database';
 import logger from './config/logger';
 import aiRoutes from './routes/ai';
@@ -44,15 +46,36 @@ app.use(morgan('combined'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Redis 클라이언트 설정
+const redisClient = createClient({
+  url: process.env.REDIS_URL || 'redis://localhost:6379'
+});
+
+redisClient.on('error', (err) => logger.error('Redis Client Error:', err));
+redisClient.on('connect', () => logger.info('✅ Redis connected'));
+
+redisClient.connect().catch(console.error);
+
+// Redis 세션 스토어 설정
+const redisStore = new RedisStore({
+  client: redisClient,
+  prefix: 'fans:sess:',
+});
+
 // 세션 설정
 app.use(session({
+  store: redisStore,
   secret: process.env.SESSION_SECRET || 'your-secret-key-here',
+  name: 'fans.sid', // 명확한 쿠키 이름
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // OAuth를 위해 true로 변경
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // CloudFront -> ALB는 HTTP이므로 false
     httpOnly: true,
-    maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+    sameSite: 'lax', // OAuth redirect를 위해 lax
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7일
+    path: '/',
+    domain: undefined // 명시적으로 undefined
   }
 }));
 
@@ -106,7 +129,7 @@ async function startServer() {
     app.listen(PORT, '0.0.0.0', () => {
       logger.info(`🚀 Server running on port ${PORT}`);
       logger.info(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'https://minwoo.shop'}`);
+      logger.info(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'https://www.fans.ai.kr'}`);
     });
   } catch (error) {
     logger.error('❌ Database connection failed:', error);

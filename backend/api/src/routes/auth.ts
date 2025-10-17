@@ -129,6 +129,12 @@ router.post('/reset-password', async (req, res) => {
 router.get('/kakao/start', async (req, res) => {
   try {
     const authUrl = await authService.startKakaoLogin(req.session);
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
     return res.json({ success: true, data: { redirectUrl: authUrl } });
   } catch (e: any) {
     return res.status(400).json({ success: false, error: e.message || '카카오 로그인 초기화 실패' });
@@ -155,10 +161,10 @@ router.get('/kakao/callback', async (req, res) => {
     (req.session as any).username = result.user.username;
     (req.session as any).isAuthenticated = true;
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://minwoo.shop';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.fans.ai.kr';
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
   } catch (e: any) {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://minwoo.shop';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.fans.ai.kr';
 
     // 신규 사용자인 경우 등록 페이지로 리다이렉트
     if (e.message.startsWith('NEW_USER:')) {
@@ -173,6 +179,12 @@ router.get('/kakao/callback', async (req, res) => {
 router.get('/naver/start', async (req, res) => {
   try {
     const authUrl = await authService.startNaverLogin(req.session);
+    await new Promise<void>((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
     return res.json({ success: true, data: { redirectUrl: authUrl } });
   } catch (e: any) {
     return res.status(400).json({ success: false, error: e.message || '네이버 로그인 초기화 실패' });
@@ -199,10 +211,10 @@ router.get('/naver/callback', async (req, res) => {
     (req.session as any).username = result.user.username;
     (req.session as any).isAuthenticated = true;
 
-    const frontendUrl = process.env.FRONTEND_URL || 'https://minwoo.shop';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.fans.ai.kr';
     return res.redirect(`${frontendUrl}/login-success?token=${encodeURIComponent(result.token)}`);
   } catch (e: any) {
-    const frontendUrl = process.env.FRONTEND_URL || 'https://minwoo.shop';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://www.fans.ai.kr';
 
     // 신규 네이버 사용자인 경우 회원가입 페이지로 리다이렉트
     if (e.message.startsWith('NEW_USER:')) {

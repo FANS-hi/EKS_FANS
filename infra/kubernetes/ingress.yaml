@@ -12,7 +12,7 @@ spec:
   serviceRef:
     name: main-api
     port: 3000
-  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Main-API-TG/2638218107f93a49
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Main-API-TG/381ae200a314997e
   targetType: instance
 
 ---
@@ -26,7 +26,7 @@ spec:
   serviceRef:
     name: bias-analysis-ai
     port: 8002
-  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Bias-AI-TG/e2f291631628a4ef
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Bias-AI-TG/8f0d89fb97968176
   targetType: instance
 
 ---
@@ -40,5 +40,5 @@ spec:
   serviceRef:
     name: summarize-ai
     port: 8000
-  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Summarize-AI-TG/b21558acf9aa7dad
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Summarize-AI-TG/0a3a775cc56ebd14
   targetType: instance

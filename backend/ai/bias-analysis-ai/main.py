@@ -13,6 +13,7 @@ from datetime import datetime
 from sentiment_analyzer import SentimentAnalyzer
 from keyword_extractor import KeywordExtractor
 from political_analyzer import PoliticalAnalyzer
+from source_bias_analyzer import SourceBiasAnalyzer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,7 +25,7 @@ app = FastAPI(title="FANS Bias Analysis AI", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001"],
+    allow_origins=["https://www.fans.ai.kr"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,10 +34,12 @@ app.add_middleware(
 sentiment_analyzer = SentimentAnalyzer()
 keyword_extractor = KeywordExtractor()
 political_analyzer = PoliticalAnalyzer()
+source_bias_analyzer = SourceBiasAnalyzer()
 
 class AnalysisRequest(BaseModel):
     text: str
     article_id: Optional[int] = None
+    source_name: Optional[str] = None
 
 class SentimentResponse(BaseModel):
     sentiment: str
@@ -120,19 +123,22 @@ async def analyze_full(request: AnalysisRequest):
         sentiment = sentiment_analyzer.analyze(request.text)
         keywords = keyword_extractor.extract(request.text, top_n=10)
 
+        # 언론사 기반 편향성 분석 (새로운 방식)
+        source_name = request.source_name or '기타'
+        source_bias = source_bias_analyzer.calculate_final_bias(source_name, request.text)
+
+        bias_score = source_bias['bias_score']
+        stance = source_bias['political_leaning']
+        confidence = source_bias['confidence']
+
+        # 기존 정치 분석도 포함 (참고용)
         party_analysis = political_analyzer.analyze_party_mentions(request.text)
         political_result = None
-        bias_score = 0.0
-        stance = "중립"
-
         if party_analysis:
-            bias = political_analyzer.calculate_bias_score(request.text)
-            bias_score = bias['bias_score']
-            stance = bias['stance']
             political_result = {
                 "party_analysis": party_analysis,
-                "bias_score": bias_score,
-                "stance": stance
+                "source_base_score": source_bias['source_base_score'],
+                "content_bias": source_bias['content_bias']
             }
 
         return {
@@ -142,7 +148,8 @@ async def analyze_full(request: AnalysisRequest):
             "political": political_result,
             "bias_score": bias_score,
             "political_leaning": stance,
-            "confidence": sentiment.get('confidence', 0.0),
+            "confidence": confidence,
+            "is_political": source_bias['is_political'],
             "processed_at": datetime.now().isoformat()
         }
     except Exception as e:

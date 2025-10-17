@@ -193,7 +193,10 @@ CREATE TABLE bias_analysis (
     analysis_data JSONB,
 
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    -- 기사당 하나의 분석만 존재 (배치 작업 UPSERT용)
+    CONSTRAINT uk_bias_article UNIQUE (article_id)
 );
 
 -- 사용자 선호도 (AI 학습용)
@@ -244,8 +247,8 @@ CREATE INDEX idx_recommendations_user ON ai_recommendations(user_id);
 CREATE INDEX idx_recommendations_clicked ON ai_recommendations(was_clicked) WHERE was_clicked = true;
 CREATE INDEX idx_recommendations_created ON ai_recommendations(created_at DESC);
 
--- 편향성 분석 인덱스
-CREATE INDEX idx_bias_article ON bias_analysis(article_id);
+-- 편향성 분석 인덱스 (UNIQUE 제약조건이 자동으로 인덱스 생성)
+-- CREATE INDEX idx_bias_article ON bias_analysis(article_id); -- 제거됨
 
 -- 키워드 인덱스
 CREATE INDEX idx_keywords_frequency ON keywords(frequency DESC);

@@ -87,6 +87,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   comment             = "dw-FANS Frontend Distribution"
   default_root_object = "index.html"
   price_class         = "PriceClass_200" # 아시아, 북미, 유럽
+  aliases             = ["www.fans.ai.kr"]
 
   # S3 Origin (프론트엔드)
   origin {
@@ -173,9 +174,11 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
   }
 
-  # Viewer Certificate (기본 CloudFront 인증서 사용)
+  # Viewer Certificate (커스텀 도메인용 ACM 인증서)
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = "arn:aws:acm:us-east-1:907123164281:certificate/25f9eea8-706a-4f28-88c6-ebe4e936b293"
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 
   tags = {

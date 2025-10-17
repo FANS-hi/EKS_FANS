@@ -97,7 +97,7 @@ export class NaverMetaParser {
   /**
    * 개별 기사 파싱 (메타 태그 + 셀렉터 활용)
    */
-  async parseArticle(page: Page, url: string): Promise<NaverNewsData | null> {
+  async parseArticle(page: Page, url: string, sectionUrl?: string): Promise<NaverNewsData | null> {
     try {
       logger.info(`[Naver Meta Parser] 기사 파싱 시작: ${url}`);
 
@@ -204,8 +204,14 @@ export class NaverMetaParser {
       // 언론사 분류
       const classifiedSource = classifySource(articleData.originalSource);
 
+      // 카테고리 추출 (sectionUrl이 있으면 사용)
+      const category = sectionUrl ? this.getCategoryFromUrl(sectionUrl) : undefined;
+
       logger.info(`[Naver Meta Parser] 파싱 성공: ${articleData.title.substring(0, 30)}...`);
       logger.info(`  원본 언론사: ${articleData.originalSource} → 분류: ${classifiedSource}`);
+      if (category) {
+        logger.info(`  카테고리: ${category}`);
+      }
 
       return {
         title: articleData.title,
@@ -216,7 +222,7 @@ export class NaverMetaParser {
         imageUrl: articleData.imageUrl || undefined,
         journalist: articleData.journalist || undefined,
         pubDate,
-        category: undefined // 섹션 URL로 매핑 필요시
+        category
       };
 
     } catch (error) {

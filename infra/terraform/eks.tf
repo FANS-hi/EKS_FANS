@@ -112,15 +112,14 @@ resource "aws_eks_node_group" "main" {
   node_group_name = "dw-FANS-Node-Group"
   node_role_arn   = aws_iam_role.eks_nodes.arn
   subnet_ids = [
-    aws_subnet.fans_private_a.id,
-    aws_subnet.fans_private_b.id
+    aws_subnet.fans_private_a.id
   ]
 
-  instance_types = ["t3.medium"] # 비용 절감 (프로덕션은 t3.large)
+  instance_types = ["t3.large"] # 메모리 여유 확보 (8GB RAM)
 
   scaling_config {
-    desired_size = 2
-    max_size     = 3
+    desired_size = 1
+    max_size     = 2
     min_size     = 1
   }
 
