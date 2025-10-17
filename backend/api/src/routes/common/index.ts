@@ -45,13 +45,24 @@ router.get('/common/media-sources', async (req: Request, res: Response) => {
       order: { id: 'ASC' }
     });
 
+    // "기타-"로 시작하지 않는 주요 언론사만 필터링
+    const majorSources = sources.filter(source => !source.name.startsWith('기타-'));
+
     // 프론트엔드에서 기대하는 형태로 변환 (name, domain, logo_url 포함)
-    const sourcesWithDomain = sources.map(source => ({
+    const sourcesWithDomain = majorSources.map(source => ({
       name: source.name,
       domain: `${source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`, // 임시 도메인 생성
       oid: source.id.toString(),
       logo_url: source.logo_url
     }));
+
+    // "기타" 추가 (oid는 특별한 값으로)
+    sourcesWithDomain.push({
+      name: '기타',
+      domain: 'others.com',
+      oid: 'others',
+      logo_url: undefined
+    });
 
     res.json({
       success: true,
@@ -91,12 +102,24 @@ router.get('/common/all', async (req: Request, res: Response) => {
     ]);
 
     const categoryNames = categories.map(category => category.name);
-    const sourcesWithDomain = sources.map(source => ({
+
+    // "기타-"로 시작하지 않는 주요 언론사만 필터링
+    const majorSources = sources.filter(source => !source.name.startsWith('기타-'));
+
+    const sourcesWithDomain = majorSources.map(source => ({
       name: source.name,
       domain: `${source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
       oid: source.id.toString(),
       logo_url: source.logo_url
     }));
+
+    // "기타" 추가
+    sourcesWithDomain.push({
+      name: '기타',
+      domain: 'others.com',
+      oid: 'others',
+      logo_url: undefined
+    });
 
     res.json({
       success: true,

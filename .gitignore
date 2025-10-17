@@ -100,6 +100,12 @@ backend/ai-service/venv/
 CLAUDE.md
 
 # === Crawler Services ===
+# 통합 crawler root
+backend/crawler/node_modules/
+backend/crawler/dist/
+backend/crawler/build/
+backend/crawler/*.log
+
 backend/crawler/rss-crawler/node_modules/
 backend/crawler/rss-crawler/dist/
 backend/crawler/rss-crawler/build/
@@ -177,10 +183,14 @@ work_log.md
 *.pyc
 *.pyo
 
-# === Package Lock (Git LFS 문제 방지) ===
-**/package-lock.json
-**/package.json
-**/tsconfig.json
+# === Test Scripts ===
+# 테스트 및 임시 스크립트 파일들
+**/test-*.ts
+**/test-*.js
+**/*-test.ts
+**/*-test.js
+**/test.ts
+**/test.js
 
 # Puppeteer Crawler
 backend/crawler/puppeteer-crawler/node_modules/
@@ -190,7 +200,28 @@ backend/crawler/puppeteer-crawler/logs/
 backend/crawler/puppeteer-crawler/*.log
 backend/crawler/puppeteer-crawler/*.tsbuildinfo
 
+# Crawler V2
+backend/crawler/crawler-v2/node_modules/
+backend/crawler/crawler-v2/dist/
+backend/crawler/crawler-v2/build/
+backend/crawler/crawler-v2/logs/
+backend/crawler/crawler-v2/*.log
+backend/crawler/crawler-v2/*.tsbuildinfo
+
 # === Backup Archives ===
 *.tar.gz
 *.zip
 *_backup.tar.gz
+
+# === Temporary Directories ===
+# 임시로 생성된 디렉토리들
+FANS_feature_update*/
+*_backup/
+*_old/
+*_temp/
+
+# === Batch Scripts ===
+# 배치 작업용 임시 스크립트들
+**/batch_*.py
+**/migrate_*.py
+**/reanalyze_*.py

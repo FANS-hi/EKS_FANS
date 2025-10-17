@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bias-analysis-batch
+  namespace: fans
+spec:
+  template:
+    metadata:
+      labels:
+        app: bias-batch
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: batch
+        image: python:3.11-slim
+        command:
+          - /bin/bash
+          - -c
+          - |
+            pip install --no-cache-dir asyncpg aiohttp && \
+            python -u /scripts/batch_analysis.py
+        env:
+        - name: DB_HOST
+          value: "dw-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "fans_db"
+        - name: DB_USER
+          value: "fans_admin"
+        - name: DB_PASSWORD
+          value: "fans_password"
+        - name: BIAS_AI_URL
+          value: "http://bias-analysis-ai:8002"
+        - name: BATCH_SIZE
+          value: "50"
+        - name: MAX_CONCURRENT
+          value: "2"
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+          readOnly: true
+      volumes:
+      - name: script
+        configMap:
+          name: bias-batch-script

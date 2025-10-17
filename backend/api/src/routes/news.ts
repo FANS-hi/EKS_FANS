@@ -207,34 +207,70 @@ router.get("/news/by-source/:sourceName", async (req: Request, res: Response) =>
       return res.status(400).json({ error: "SOURCE_NAME_REQUIRED" });
     }
 
-    // 해당 언론사 찾기
-    const source = await sourceRepo.findOne({ where: { name: sourceName } });
-    if (!source) {
-      return res.status(404).json({ error: "SOURCE_NOT_FOUND" });
-    }
-
     // N일 전 날짜 계산
     const daysAgo = new Date();
     daysAgo.setDate(daysAgo.getDate() - days);
 
     const skip = (page - 1) * limit;
 
-    const articles = await newsRepo.createQueryBuilder("article")
+    let query = newsRepo.createQueryBuilder("article")
       .leftJoinAndSelect("article.source", "source")
       .leftJoinAndSelect("article.category", "category")
-      .leftJoinAndSelect("article.stats", "stats")
-      .where("article.sourceId = :sourceId", { sourceId: source.id })
-      .andWhere("article.pubDate > :date", { date: daysAgo })
+      .leftJoinAndSelect("article.stats", "stats");
+
+    // "기타" 선택 시 모든 "기타-XXX" 언론사 포함
+    if (sourceName === "기타") {
+      // "기타-"로 시작하는 모든 언론사 찾기
+      const otherSources = await sourceRepo
+        .createQueryBuilder("source")
+        .where("source.name LIKE :pattern", { pattern: "기타-%" })
+        .getMany();
+
+      if (otherSources.length === 0) {
+        return res.json({
+          items: [],
+          pagination: { page, limit, total: 0, hasMore: false }
+        });
+      }
+
+      const otherSourceIds = otherSources.map(s => s.id);
+      query = query.where("article.sourceId IN (:...sourceIds)", { sourceIds: otherSourceIds });
+    } else {
+      // 특정 언론사 찾기
+      const source = await sourceRepo.findOne({ where: { name: sourceName } });
+      if (!source) {
+        return res.status(404).json({ error: "SOURCE_NOT_FOUND" });
+      }
+
+      query = query.where("article.sourceId = :sourceId", { sourceId: source.id });
+    }
+
+    query = query.andWhere("article.pubDate > :date", { date: daysAgo })
       .orderBy("article.pubDate", "DESC")
       .skip(skip)
-      .take(limit)
-      .getMany();
+      .take(limit);
 
+    const articles = await query.getMany();
     const items = await Promise.all(articles.map(mapArticle));
 
-    // 전체 개수도 함께 반환
-    const total = await newsRepo.createQueryBuilder("article")
-      .where("article.sourceId = :sourceId", { sourceId: source.id })
+    // 전체 개수 계산
+    let totalQuery = newsRepo.createQueryBuilder("article");
+
+    if (sourceName === "기타") {
+      const otherSources = await sourceRepo
+        .createQueryBuilder("source")
+        .where("source.name LIKE :pattern", { pattern: "기타-%" })
+        .getMany();
+      const otherSourceIds = otherSources.map(s => s.id);
+      totalQuery = totalQuery.where("article.sourceId IN (:...sourceIds)", { sourceIds: otherSourceIds });
+    } else {
+      const source = await sourceRepo.findOne({ where: { name: sourceName } });
+      if (source) {
+        totalQuery = totalQuery.where("article.sourceId = :sourceId", { sourceId: source.id });
+      }
+    }
+
+    const total = await totalQuery
       .andWhere("article.pubDate > :date", { date: daysAgo })
       .getCount();
 

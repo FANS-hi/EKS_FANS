@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: summarize-batch
+  namespace: fans
+spec:
+  template:
+    metadata:
+      labels:
+        app: summarize-batch
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: batch
+        image: python:3.11-slim
+        command:
+          - /bin/bash
+          - -c
+          - |
+            pip install --no-cache-dir asyncpg aiohttp && \
+            python -u /scripts/batch_summarize.py
+        env:
+        - name: DB_HOST
+          value: "dw-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "fans_db"
+        - name: DB_USER
+          value: "fans_admin"
+        - name: DB_PASSWORD
+          value: "fans_password"
+        - name: SUMMARIZE_AI_URL
+          value: "http://summarize-ai:8000"
+        - name: BATCH_SIZE
+          value: "50"
+        - name: MAX_CONCURRENT
+          value: "1"
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+      volumes:
+      - name: script
+        configMap:
+          name: summarize-batch-script

@@ -1,0 +1,14 @@
+# AWS 설정
+aws_region = "ap-northeast-2"
+environment = "production"
+
+# EC2 설정
+instance_type = "t3.xlarge"
+spot_max_price = "" # 빈 값 = on-demand 가격까지 허용
+root_volume_size = 50
+
+# SSH 키 (실제 키 이름으로 변경)
+key_name = "your-key-name"
+
+# Docker Hub
+docker_username = "hodduk"

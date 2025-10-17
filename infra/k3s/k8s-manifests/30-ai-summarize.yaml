@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: summarize-ai
+  namespace: fans
+  labels:
+    app: summarize-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: summarize-ai
+  template:
+    metadata:
+      labels:
+        app: summarize-ai
+    spec:
+      imagePullSecrets:
+      - name: dockerhub-secret
+      containers:
+      - name: summarize-ai
+        image: hodduk/k3s-fans-summarize-ai:latest
+        ports:
+        - containerPort: 8000
+          name: http
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "500m"
+          limits:
+            memory: "3Gi"
+            cpu: "1000m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: summarize-ai-service
+  namespace: fans
+spec:
+  selector:
+    app: summarize-ai
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+  type: ClusterIP

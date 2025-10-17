@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: puppeteer-crawler
+  namespace: fans
+  labels:
+    app: puppeteer-crawler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: puppeteer-crawler
+  template:
+    metadata:
+      labels:
+        app: puppeteer-crawler
+    spec:
+      imagePullSecrets:
+      - name: dockerhub-secret
+      containers:
+      - name: puppeteer-crawler
+        image: hodduk/k3s-fans-puppeteer-crawler:latest
+        ports:
+        - containerPort: 4004
+          name: http
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        env:
+        - name: PORT
+          value: "4004"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: puppeteer-crawler-service
+  namespace: fans
+spec:
+  selector:
+    app: puppeteer-crawler
+  ports:
+  - port: 4004
+    targetPort: 4004
+    protocol: TCP
+  type: ClusterIP

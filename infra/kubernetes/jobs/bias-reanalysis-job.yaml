@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: bias-reanalysis
+  namespace: fans
+spec:
+  backoffLimit: 2
+  completions: 1
+  template:
+    metadata:
+      labels:
+        app: bias-reanalysis
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: bias-reanalysis
+        image: hodduk/k3s-fans-bias-analysis-ai:latest
+        command: ["python", "/app/batch_analysis.py"]
+        env:
+        - name: DB_HOST
+          value: "postgres-service.fans.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: POSTGRES_DB
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: fans-config
+              key: POSTGRES_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: POSTGRES_PASSWORD
+        - name: BIAS_AI_URL
+          value: "http://bias-analysis-ai-service.fans.svc.cluster.local:8002"
+        - name: BATCH_SIZE
+          value: "50"
+        - name: MAX_CONCURRENT
+          value: "10"
+        - name: LIMIT
+          value: "5000"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

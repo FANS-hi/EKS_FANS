@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bias-analysis-ai
+  namespace: fans
+  labels:
+    app: bias-analysis-ai
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bias-analysis-ai
+  template:
+    metadata:
+      labels:
+        app: bias-analysis-ai
+    spec:
+      imagePullSecrets:
+      - name: dockerhub-secret
+      containers:
+      - name: bias-analysis-ai
+        image: hodduk/k3s-fans-bias-analysis-ai:latest
+        ports:
+        - containerPort: 8002
+          name: http
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        resources:
+          requests:
+            memory: "1.5Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bias-analysis-ai-service
+  namespace: fans
+spec:
+  selector:
+    app: bias-analysis-ai
+  ports:
+  - port: 8002
+    targetPort: 8002
+    protocol: TCP
+  type: ClusterIP

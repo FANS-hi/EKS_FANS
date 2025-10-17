@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-to-backup
+  namespace: fans
+spec:
+  template:
+    metadata:
+      labels:
+        app: migrate-backup
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migrate
+        image: python:3.11-slim
+        command:
+          - /bin/bash
+          - -c
+          - |
+            pip install --no-cache-dir asyncpg && \
+            python -u /scripts/migrate_analysis_data.py
+        env:
+        # 실제 마이그레이션
+        - name: DRY_RUN
+          value: "false"
+
+        # 타겟 DB (백업 DB)
+        - name: TARGET_DB_HOST
+          value: "211.46.52.151"
+        - name: TARGET_DB_PORT
+          value: "15432"
+        - name: TARGET_DB_NAME
+          value: "fans_db"
+        - name: TARGET_DB_USER
+          value: "team1"
+        - name: TARGET_DB_PASSWORD
+          value: "Gkrtod1@"
+
+        # 마이그레이션 설정
+        - name: BATCH_SIZE
+          value: "100"
+        - name: DELAY_SECONDS
+          value: "0.5"
+
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+          readOnly: true
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+      volumes:
+      - name: script
+        configMap:
+          name: migrate-script

@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-crawler
+  namespace: fans
+  labels:
+    app: api-crawler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-crawler
+  template:
+    metadata:
+      labels:
+        app: api-crawler
+    spec:
+      imagePullSecrets:
+      - name: dockerhub-secret
+      containers:
+      - name: api-crawler
+        image: hodduk/k3s-fans-api-crawler:latest
+        ports:
+        - containerPort: 4003
+          name: http
+        envFrom:
+        - configMapRef:
+            name: fans-config
+        - secretRef:
+            name: fans-secrets
+        env:
+        - name: PORT
+          value: "4003"
+        - name: AUTO_CRAWL
+          value: "true"
+        - name: CRAWL_INTERVAL_MINUTES
+          value: "5"
+        - name: CRAWL_LIMIT_PER_CATEGORY
+          value: "20"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-crawler-service
+  namespace: fans
+spec:
+  selector:
+    app: api-crawler
+  ports:
+  - port: 4003
+    targetPort: 4003
+    protocol: TCP
+  type: ClusterIP

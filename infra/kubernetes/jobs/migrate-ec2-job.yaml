@@ -1,0 +1,61 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migrate-to-ec2
+  namespace: fans
+spec:
+  template:
+    metadata:
+      labels:
+        app: migrate-ec2
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migrate
+        image: python:3.11-slim
+        command:
+          - /bin/bash
+          - -c
+          - |
+            pip install --no-cache-dir asyncpg && \
+            python -u /scripts/migrate_analysis_data.py
+        env:
+        # DRY RUN 설정 (테스트용)
+        - name: DRY_RUN
+          value: "false"  # 실제 마이그레이션 실행
+
+        # 타겟 DB (EC2)
+        - name: TARGET_DB_HOST
+          value: "3.34.40.109"
+        - name: TARGET_DB_PORT
+          value: "5432"
+        - name: TARGET_DB_NAME
+          value: "fans_db"
+        - name: TARGET_DB_USER
+          value: "fans_user"
+        - name: TARGET_DB_PASSWORD
+          value: "as-12dfaoj3sav5"
+
+        # 마이그레이션 설정
+        - name: BATCH_SIZE
+          value: "100"
+        - name: DELAY_SECONDS
+          value: "0.5"
+
+        volumeMounts:
+        - name: script
+          mountPath: /scripts
+          readOnly: true
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+      volumes:
+      - name: script
+        configMap:
+          name: migrate-script
