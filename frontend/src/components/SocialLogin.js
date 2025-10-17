@@ -15,7 +15,7 @@ const SocialLogin = ({ type = "login" }) => {
     try {
       return new URL(window.location.origin).toString();
     } catch {
-      return 'https://minwoo.shop';
+      return 'https://www.fans.ai.kr';
     }
   };
 

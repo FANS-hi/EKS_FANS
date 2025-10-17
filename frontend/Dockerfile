@@ -1,7 +1,6 @@
-# Node.js 기반 React 개발 환경
-FROM node:20-alpine
+# Build stage
+FROM node:20-alpine AS builder
 
-# 작업 디렉토리 설정
 WORKDIR /app
 
 # package.json과 package-lock.json 복사
@@ -13,11 +12,20 @@ RUN npm install
 # 소스 코드 복사
 COPY . .
 
-# 환경 변수 설정
-ENV PORT=3001
+# Production 빌드
+RUN npm run build
+
+# Production stage
+FROM nginx:alpine
+
+# 빌드된 파일을 nginx로 복사
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# nginx 설정
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # 포트 노출
-EXPOSE 3001
+EXPOSE 80
 
-# 개발 서버 시작
-CMD ["npm", "start"]
+# nginx 시작
+CMD ["nginx", "-g", "daemon off;"]

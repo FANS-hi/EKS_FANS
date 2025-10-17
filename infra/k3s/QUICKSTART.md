@@ -33,6 +33,7 @@ terraform apply
 ```
 instance_public_ip = "3.34.40.123"
 ssh_command = "ssh -i ~/.ssh/your-key.pem ubuntu@3.34.40.123"
+
 ```
 
 ---
