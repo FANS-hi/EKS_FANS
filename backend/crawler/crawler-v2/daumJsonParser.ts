@@ -37,6 +37,20 @@ export class DaumJsonParser {
   }
 
   /**
+   * URL에서 카테고리 추출
+   */
+  private getCategoryFromUrl(url: string): string | undefined {
+    if (url.includes('/politics')) return '정치';
+    if (url.includes('/economic')) return '경제';
+    if (url.includes('/society')) return '사회';
+    if (url.includes('/foreign')) return '세계';
+    if (url.includes('/culture')) return '생활/문화';
+    if (url.includes('/digital')) return 'IT/과학';
+    if (url.includes('/entertain')) return '연예';
+    return undefined;
+  }
+
+  /**
    * 섹션 페이지에서 기사 URL 추출
    */
   async extractArticleUrls(page: Page, sectionUrl: string): Promise<string[]> {
@@ -73,7 +87,7 @@ export class DaumJsonParser {
   /**
    * 개별 기사 파싱 (JSON 데이터 활용)
    */
-  async parseArticle(page: Page, url: string): Promise<DaumNewsData | null> {
+  async parseArticle(page: Page, url: string, sectionUrl?: string): Promise<DaumNewsData | null> {
     try {
       logger.info(`[Daum JSON Parser] 기사 파싱 시작: ${url}`);
 
@@ -207,7 +221,9 @@ export class DaumJsonParser {
       let content = articleData.content;
       let imageUrl = articleData.jsonData?.dmcf?.representImage || articleData.fallbackData.imageUrl;
       let journalist = articleData.fallbackData.journalist;
-      let category = articleData.jsonData?.dmcf?.categoryName;
+
+      // 카테고리 추출 (sectionUrl이 있으면 사용, 없으면 JSON에서 추출)
+      let category = sectionUrl ? this.getCategoryFromUrl(sectionUrl) : articleData.jsonData?.dmcf?.categoryName;
 
       // 날짜 파싱
       let pubDate: Date | undefined;
@@ -234,6 +250,9 @@ export class DaumJsonParser {
 
       logger.info(`[Daum JSON Parser] 파싱 성공: ${title.substring(0, 30)}...`);
       logger.info(`  원본 언론사: ${originalSource} → 분류: ${classifiedSource}`);
+      if (category) {
+        logger.info(`  카테고리: ${category}`);
+      }
 
       return {
         title,

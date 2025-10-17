@@ -13,6 +13,7 @@ import {
 } from './siteParsers';
 import axios from 'axios';
 import { summarizeArticle, analyzeBias } from '../../shared/services/aiService';
+import { classifySource } from '../../shared/utils/sourceClassifier';
 
 export class NewsCrawlerService {
   private parsers: Map<string, SiteParser> = new Map();
@@ -64,10 +65,25 @@ export class NewsCrawlerService {
     let source = this.sourceMap.get(sourceName);
     if (!source) {
       const sourceRepo = AppDataSource.getRepository(Source);
-      source = sourceRepo.create({ name: sourceName });
+
+      // "기타-"로 시작하는 언론사는 ID 1000번 이후 배정
+      if (sourceName.startsWith('기타-')) {
+        // 현재 최대 ID 조회
+        const result = await sourceRepo
+          .createQueryBuilder('source')
+          .select('MAX(source.id)', 'maxId')
+          .where('source.id >= 1000')
+          .getRawOne();
+
+        const nextId = result?.maxId ? result.maxId + 1 : 1000;
+        source = sourceRepo.create({ id: nextId, name: sourceName });
+      } else {
+        source = sourceRepo.create({ name: sourceName });
+      }
+
       source = await sourceRepo.save(source);
       this.sourceMap.set(sourceName, source);
-      logger.info(`새 언론사 생성: ${sourceName}`);
+      logger.info(`새 언론사 생성: ${sourceName} (ID: ${source.id})`);
     }
 
     // Category 확인/생성
@@ -166,7 +182,10 @@ export class NewsCrawlerService {
     }
 
     // Daum의 경우 원 언론사 정보가 있으면 그걸 사용
-    const finalSourceName = article.originalSource || sourceName;
+    const originalSourceName = article.originalSource || sourceName;
+
+    // 언론사 분류 (기타- prefix 자동 추가)
+    const finalSourceName = classifySource(originalSourceName);
 
     // Source & Category 확보
     const { sourceId, categoryId } = await this.ensureSourceAndCategory(finalSourceName, article.categoryName);
@@ -200,12 +219,12 @@ export class NewsCrawlerService {
     logger.info(`새 기사 저장: ${article.title}`);
 
     // AI 요약 자동 실행 (비동기, 실패해도 계속)
-    summarizeArticle(saved.id, article.content).catch((error) => {
+    summarizeArticle(saved.id, article.content).catch((error: any) => {
       logger.error(`AI 요약 실패 (기사 ID: ${saved.id}):`, error);
     });
 
     // AI 편향 분석 요청 (비동기, 실패해도 계속)
-    analyzeBias(saved.id, article.content).catch((error) => {
+    analyzeBias(saved.id, article.content).catch((error: any) => {
       logger.error(`AI 분석 요청 실패 (기사 ID: ${saved.id}):`, error);
     });
   }

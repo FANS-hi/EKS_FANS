@@ -2,9 +2,10 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import * as iconv from 'iconv-lite';
 import { AppDataSource } from '../../shared/config/database';
-import { NewsArticle } from '../../shared/entities/NewsArticle';
+import { NewsArticle, Source, Category } from '../../shared/entities';
 import logger from '../../shared/config/logger';
 import { summarizeArticle, analyzeBias } from '../../shared/services/aiService';
+import { classifySource } from '../../shared/utils/sourceClassifier';
 
 interface NaverNewsApiResponse {
   lastBuildDate: string;
@@ -36,6 +37,9 @@ class NewsCrawlerService {
   // Naver API 키 설정 (2개 키를 라운드 로빈 방식으로 사용)
   private naverApiKeys: Array<{ clientId: string; clientSecret: string }> = [];
   private currentKeyIndex: number = 0;
+  private sourceMap: Map<string, Source> = new Map();
+  private categoryMap: Map<string, Category> = new Map();
+  private initialized: boolean = false;
 
   constructor() {
     logger.debug('[CRAWLER DEBUG] NewsCrawlerService constructor 실행됨');
@@ -81,6 +85,83 @@ class NewsCrawlerService {
 
     return key;
   }
+
+  /**
+   * 데이터베이스 초기화 및 Source/Category 로드
+   */
+  private async initialize(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+
+    if (!AppDataSource.isInitialized) {
+      await AppDataSource.initialize();
+      logger.info('[DB] 데이터베이스 연결 완료');
+    }
+
+    // Source 로드
+    const sourceRepo = AppDataSource.getRepository(Source);
+    const sources = await sourceRepo.find();
+    sources.forEach((source) => {
+      this.sourceMap.set(source.name, source);
+    });
+    logger.info(`[DB] ${sources.length}개 언론사 로드 완료`);
+
+    // Category 로드
+    const categoryRepo = AppDataSource.getRepository(Category);
+    const categories = await categoryRepo.find();
+    categories.forEach((category) => {
+      this.categoryMap.set(category.name, category);
+    });
+    logger.info(`[DB] ${categories.length}개 카테고리 로드 완료`);
+
+    this.initialized = true;
+  }
+
+  /**
+   * Source 또는 Category가 없으면 생성
+   */
+  private async ensureSourceAndCategory(sourceName: string, categoryName?: string): Promise<{ sourceId: number; categoryId: number }> {
+    // Source 확인/생성
+    let source = this.sourceMap.get(sourceName);
+    if (!source) {
+      const sourceRepo = AppDataSource.getRepository(Source);
+
+      // "기타-"로 시작하는 언론사는 ID 1000번 이후 배정
+      if (sourceName.startsWith('기타-')) {
+        const result = await sourceRepo
+          .createQueryBuilder('source')
+          .select('MAX(source.id)', 'maxId')
+          .where('source.id >= 1000')
+          .getRawOne();
+
+        const nextId = result?.maxId ? result.maxId + 1 : 1000;
+        source = sourceRepo.create({ id: nextId, name: sourceName });
+      } else {
+        source = sourceRepo.create({ name: sourceName });
+      }
+
+      source = await sourceRepo.save(source);
+      this.sourceMap.set(sourceName, source);
+      logger.info(`[DB] 새 언론사 생성: ${sourceName} (ID: ${source.id})`);
+    }
+
+    // Category 확인/생성
+    let category = this.categoryMap.get(categoryName || '기타');
+    if (!category) {
+      const categoryRepo = AppDataSource.getRepository(Category);
+      category = categoryRepo.create({ name: categoryName || '기타' });
+      category = await categoryRepo.save(category);
+      this.categoryMap.set(categoryName || '기타', category);
+      logger.info(`[DB] 새 카테고리 생성: ${categoryName || '기타'}`);
+    }
+
+    return {
+      sourceId: source.id,
+      categoryId: category.id,
+    };
+  }
+
   // 텍스트 정리 함수
   // URL에서 언론사 추출
   private extractMediaSourceFromUrl(url: string): string {
@@ -852,6 +933,9 @@ class NewsCrawlerService {
 
   async saveNewsToDatabase(parsedNews: ParsedNews, categoryName: string, originalUrl: string): Promise<NewsArticle | null> {
     try {
+      // 초기화 (source/category 로드)
+      await this.initialize();
+
       const newsRepo = AppDataSource.getRepository(NewsArticle);
 
       // 중복 체크
@@ -875,29 +959,7 @@ class NewsCrawlerService {
         return existingNews;
       }
 
-      // 카테고리 ID 매핑
-      const categoryIdMap: { [key: string]: number } = {
-        '정치': 1,
-        '경제': 2,
-        '사회': 3,
-        '연예': 4,
-        '생활/문화': 5,
-        'IT/과학': 6,
-        '세계': 7,
-        '스포츠': 8
-      };
-
-      // 언론사 ID 매핑 (실제 DB ID 기준)
-      const sourceIdMap: { [key: string]: number } = {
-        '연합뉴스': 1, '동아일보': 20, '문화일보': 21,
-        '세계일보': 22, '조선일보': 23, '중앙일보': 25,
-        '한겨레': 28, '경향신문': 32, '한국일보': 55,
-        '매일경제': 56, '한국경제': 214, '머니투데이': 421,
-        'YTN': 437, 'JTBC': 448,
-        '기타': 449  // 목록에 없는 언론사는 기타로 분류
-      };
-
-      // URL과 제목에서 언론사 추출 (RSS 크롤러와 동일한 방식)
+      // URL과 제목에서 언론사 추출
       let extractedSource = this.extractSourceFromURL(originalUrl) || '';
 
       if (!extractedSource && parsedNews.mediaSource) {
@@ -912,15 +974,15 @@ class NewsCrawlerService {
         }
       }
 
-      // 추출된 언론사명으로 sourceId 결정
-      // 매핑에 없는 언론사는 '기타'(449)로 분류
-      const sourceId = sourceIdMap[extractedSource] || 449;
+      // 언론사 분류 (기타- prefix 자동 추가)
+      const finalSourceName = classifySource(extractedSource);
 
-      logger.debug(`[DEBUG] 언론사 매핑: URL="${originalUrl.substring(0,50)}..." 제목="${parsedNews.title.substring(0,50)}..." -> 추출="${extractedSource}" -> sourceId: ${sourceId} ${sourceId === 449 ? '(기타)' : ''}`);
+      logger.debug(`[DEBUG] 언론사 분류: URL="${originalUrl.substring(0,50)}..." -> 추출="${extractedSource}" -> 최종="${finalSourceName}"`);
 
-      // ✅ 모든 뉴스를 저장 (목록에 없으면 '기타'로 저장)
+      // Source & Category 확보 (동적 생성)
+      const { sourceId, categoryId } = await this.ensureSourceAndCategory(finalSourceName, categoryName);
 
-      // NewsArticle 생성 (새 스키마)
+      // NewsArticle 생성
       const article = newsRepo.create({
         title: parsedNews.title,
         content: parsedNews.content,
@@ -928,7 +990,7 @@ class NewsCrawlerService {
         imageUrl: parsedNews.imageUrl,
         journalist: parsedNews.journalist,
         sourceId: sourceId,
-        categoryId: categoryIdMap[categoryName] || 1, // 기본값: 정치
+        categoryId: categoryId,
         pubDate: parsedNews.pubDate
       });
 

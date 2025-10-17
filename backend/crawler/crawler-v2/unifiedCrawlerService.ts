@@ -179,7 +179,7 @@ export class UnifiedCrawlerService {
         // 각 기사 파싱
         for (const url of articleUrls.slice(0, limitPerSection)) {
           try {
-            const article = await this.daumParser.parseArticle(page, url);
+            const article = await this.daumParser.parseArticle(page, url, sectionUrl);
 
             if (article && this.daumParser.validateArticle(article)) {
               await this.saveArticle(article);
