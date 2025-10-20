@@ -28,7 +28,7 @@ COPY crawler-v2 ./crawler-v2
 # 환경변수 기본값
 ENV NODE_ENV=production
 ENV UNIFIED_CRAWLER_PORT=4005
-ENV AUTO_CRAWL=false
+ENV AUTO_CRAWL=true
 ENV NODE_PATH=/app/crawler-v2/node_modules
 
 WORKDIR /app/crawler-v2

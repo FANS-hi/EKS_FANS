@@ -18,9 +18,10 @@
 대한민국 주요 언론사의 뉴스 기사를 실시간으로 수집하고, AI를 활용하여 자동으로 요약 및 편향성 분석을 제공하는 클라우드 네이티브 플랫폼 구축
 
 ### ✔️ 핵심 기능
-- 🔄 **자동화된 뉴스 크롤링**: 다음, 네이버 등 주요 포털 사이트에서 30분마다 자동 수집
+- 🔄 **자동화된 뉴스 크롤링**: 다음, 네이버 등 주요 포털 사이트에서 5분마다 자동 수집 (섹션당 20개 기사)
 - 🤖 **AI 기반 분석**: 기사 자동 요약 및 정치적 편향성 분석
 - 📊 **실시간 데이터 처리**: 크롤링부터 분석까지 완전 자동화된 파이프라인
+- ⚡ **자동 스케일링**: HPA 기반 트래픽 대응 자동 확장/축소
 - 🌐 **고가용성 웹 서비스**: www.fans.ai.kr
 
 ### ✔️ 기술 스택
@@ -128,10 +129,11 @@
 ### ✔️ AWS 리소스
 
 #### EKS (Elastic Kubernetes Service)
-- **클러스터**: fans-eks-cluster
-- **노드 그룹**: t3.medium × 2-4개 (Auto Scaling)
-- **네트워크**: VPC (10.0.30.0/24), Public/Private Subnets
+- **클러스터**: eks-FANS-Cluster (v1.30)
+- **노드 그룹**: t3.large × 1-2개 (Auto Scaling)
+- **네트워크**: VPC (172.16.0.0/16), Public/Private Subnets
 - **로드밸런서**: ALB Ingress Controller
+- **자동 스케일링**: HPA 기반 Pod 자동 확장
 
 #### 스토리지
 - **S3**: 프론트엔드 정적 파일 호스팅
@@ -312,10 +314,12 @@ kubectl get ingress -n fans
 
 ### ✔️ 자동화된 크롤링
 
-#### CronJob 설정
+#### 자동 크롤링 설정
 ```yaml
-# 30분마다 자동 실행
-schedule: "*/30 * * * *"
+# 5분마다 자동 실행
+AUTO_CRAWL: true
+CRAWL_INTERVAL_MINUTES: 5
+CRAWL_LIMIT_PER_SECTION: 20
 ```
 
 #### 수동 크롤링

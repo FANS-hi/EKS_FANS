@@ -106,17 +106,39 @@ class SourceBiasAnalyzer:
     def calculate_final_bias(self, source_name: str, text: str) -> Dict:
         """
         언론사와 내용을 종합하여 최종 편향성 계산
-        언론사 기본 점수 (60%) + 기사 내용 점수 (40%)
+        언론사 기본 점수 (75%) + 기사 내용 점수 (25%)
         """
-        # 언론사 기본 점수
-        source_profile = self.source_profiles.get(source_name, self.source_profiles['기타'])
+        # "기타-" prefix 처리
+        actual_source_name = source_name
+        if source_name.startswith('기타-'):
+            # 주요 "기타-" 언론사 개별 처리
+            known_others = {
+                '기타-오마이뉴스': {'base_score': -5.0, 'leaning': '진보'},
+                '기타-프레시안': {'base_score': -5.5, 'leaning': '진보'},
+                '기타-조선비즈': {'base_score': 6.0, 'leaning': '보수'},
+                '기타-이데일리': {'base_score': 3.0, 'leaning': '중도우'},
+                '기타-뉴시스': {'base_score': 0.0, 'leaning': '중립'},
+                '기타-뉴스1': {'base_score': 0.0, 'leaning': '중립'},
+                '기타-아시아경제': {'base_score': 2.5, 'leaning': '중도'},
+                '기타-서울경제': {'base_score': 3.5, 'leaning': '중도우'},
+            }
+
+            if source_name in known_others:
+                source_profile = known_others[source_name]
+            else:
+                # 알려지지 않은 "기타-" 언론사는 중립으로 처리
+                source_profile = self.source_profiles['기타']
+        else:
+            # 일반 언론사
+            source_profile = self.source_profiles.get(source_name, self.source_profiles['기타'])
+
         base_score = source_profile['base_score']
 
         # 기사 내용 편향성
         content_bias = self.calculate_content_bias(text)
 
-        # 가중 평균 (언론사 60%, 내용 40%)
-        final_score = (base_score * 0.6) + (content_bias * 0.4)
+        # 가중 평균 (언론사 75%, 내용 25%)
+        final_score = (base_score * 0.75) + (content_bias * 0.25)
 
         # 점수 범위 조정 (-10 ~ +10)
         final_score = max(-10, min(10, final_score))

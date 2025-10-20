@@ -2,7 +2,7 @@
 
 ## 📋 개요
 
-이 Terraform 코드는 기존 VPC(`10.0.30.0/24`)를 활용하여 FANS 프로젝트의 AWS 인프라를 구축합니다.
+이 Terraform 코드는 VPC `FANS_VPC_EKS` (`172.16.0.0/16`)를 활용하여 FANS 프로젝트의 AWS 인프라를 구축합니다.
 
 ### 📂 파일 구조
 
@@ -30,8 +30,8 @@ terraform/
 
 ### 재사용 리소스
 
-- **VPC**: `vpc-0fa60f4833b7932ad` (10.0.30.0/24)
-- **Internet Gateway**: 기존 IGW 재사용
+- **VPC**: `FANS_VPC_EKS` (172.16.0.0/16)
+- **Internet Gateway**: VPC의 IGW 재사용
 
 ---
 
@@ -133,25 +133,25 @@ terraform output infrastructure_summary
 ### CIDR 구성
 
 ```
-VPC: 10.0.30.0/24 (기존)
+VPC: 172.16.0.0/16 (FANS_VPC_EKS)
+Total: 65,536 IP addresses
 
-┌─────────────────────────────────────────────────┐
-│ 크롤러 영역 (기존 유지)                           │
-├─────────────────────────────────────────────────┤
-│ 10.0.30.0/27 (32 IP) - 크롤링 EC2              │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                FANS 서비스 영역                          │
+├─────────────────────────────────────────────────────────┤
+│ Public Subnets (Multi-AZ)                               │
+│   - Public-A:  172.16.0.0/24  (256 IP) - AZ-2a         │
+│   - Public-B:  172.16.1.0/24  (256 IP) - AZ-2c         │
+│                                                         │
+│ Private Subnets (Multi-AZ, EKS용)                       │
+│   - Private-A: 172.16.16.0/20 (4,096 IP) - AZ-2a       │
+│   - Private-B: 172.16.32.0/20 (4,096 IP) - AZ-2c       │
+└─────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────┐
-│ FANS 서비스 영역 (신규)                          │
-├─────────────────────────────────────────────────┤
-│ Public-A:  10.0.30.32/27  (32 IP) - AZ-2a      │
-│ Public-B:  10.0.30.64/27  (32 IP) - AZ-2c      │
-│ Private-A: 10.0.30.128/26 (64 IP) - AZ-2a      │
-│ Private-B: 10.0.30.192/26 (64 IP) - AZ-2c      │
-└─────────────────────────────────────────────────┘
+할당된 IP: 8,704개
+여유 IP: 56,832개
 
-총 할당: 224 IP
-여유: 32 IP
+Note: Private Subnet이 큰 이유는 EKS Pod마다 VPC IP 할당되기 때문
 ```
 
 ### 트래픽 흐름
@@ -328,23 +328,24 @@ Error: No VPC found matching criteria
 **해결**:
 ```bash
 # VPC ID 확인
-aws ec2 describe-vpcs --vpc-ids vpc-0fa60f4833b7932ad
+aws ec2 describe-vpcs --filters "Name=tag:Name,Values=FANS_VPC_EKS"
 
 # variables.tf에서 existing_vpc_id 수정
 ```
 
 ### 2. CIDR 블록 충돌
 ```
-Error: InvalidSubnet.Conflict: The CIDR '10.0.30.32/27' conflicts with another subnet
+Error: InvalidSubnet.Conflict: The CIDR '172.16.0.0/24' conflicts with another subnet
 ```
 **원인**: 같은 CIDR을 사용하는 Subnet이 이미 존재
 
 **해결**:
 ```bash
 # 기존 Subnet 확인
-aws ec2 describe-subnets --filters "Name=vpc-id,Values=vpc-0fa60f4833b7932ad"
+aws ec2 describe-subnets --filters "Name=vpc-id,Values=<VPC-ID>"
 
 # network.tf에서 CIDR 블록 수정
+# 예: 172.16.0.0/24 → 172.16.2.0/24
 ```
 
 ### 3. NAT Gateway 생성 타임아웃

@@ -87,25 +87,21 @@ services:
   # 크롤러 서비스들
   # ================================
 
-  # API Crawler Service (Port: 4003)
-  api-crawler:
+  # Unified Crawler v2 (다음 + 네이버 통합) - Port: 4005
+  crawler-v2:
     build:
       context: ./backend/crawler
-      dockerfile: ./api-crawler/Dockerfile
-    container_name: fans_api_crawler
+      dockerfile: ./crawler-v2/Dockerfile
+    container_name: fans_crawler_v2
     expose:
-      - "4003"
+      - "4005"
     env_file:
       - .env
     environment:
-      - API_CRAWLER_PORT=${API_CRAWLER_PORT:-4003}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL_MINUTES=${CRAWL_INTERVAL_MINUTES:-5}
-      - CRAWL_LIMIT_PER_CATEGORY=${CRAWL_LIMIT_PER_CATEGORY:-5}
-      - NAVER_SEARCH_CLIENT_ID=${NAVER_SEARCH_CLIENT_ID}
-      - NAVER_SEARCH_CLIENT_SECRET=${NAVER_SEARCH_CLIENT_SECRET}
-      - NAVER_CLIENT_ID_2=${NAVER_CLIENT_ID_2}
-      - NAVER_CLIENT_SECRET_2=${NAVER_CLIENT_SECRET_2}
+      - UNIFIED_CRAWLER_PORT=4005
+      - AUTO_CRAWL=true
+      - CRAWL_INTERVAL_MINUTES=5
+      - CRAWL_LIMIT_PER_SECTION=20
     depends_on:
       postgres:
         condition: service_healthy
@@ -113,117 +109,147 @@ services:
         condition: service_healthy
     networks:
       - fans_network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4003/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    # volumes:
-    #   - ./backend/crawler/api-crawler/src:/app/src
-    #   - ./backend/crawler/api-crawler/package.json:/app/package.json
-    #   - ./backend/crawler/api-crawler/package-lock.json:/app/package-lock.json
-    #   - ./backend/crawler/api-crawler/tsconfig.json:/app/tsconfig.json
-    #   - /app/node_modules
-    #   - /app/dist
+    shm_size: '2gb'
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
     restart: unless-stopped
+
+  # API Crawler Service (Port: 4003) - 비활성화됨
+  # api-crawler:
+  #   build:
+  #     context: ./backend/crawler
+  #     dockerfile: ./api-crawler/Dockerfile
+  #   container_name: fans_api_crawler
+  #   expose:
+  #     - "4003"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - API_CRAWLER_PORT=${API_CRAWLER_PORT:-4003}
+  #     - AUTO_CRAWL=${AUTO_CRAWL:-true}
+  #     - CRAWL_INTERVAL_MINUTES=${CRAWL_INTERVAL_MINUTES:-5}
+  #     - CRAWL_LIMIT_PER_CATEGORY=${CRAWL_LIMIT_PER_CATEGORY:-5}
+  #     - NAVER_SEARCH_CLIENT_ID=${NAVER_SEARCH_CLIENT_ID}
+  #     - NAVER_SEARCH_CLIENT_SECRET=${NAVER_SEARCH_CLIENT_SECRET}
+  #     - NAVER_CLIENT_ID_2=${NAVER_CLIENT_ID_2}
+  #     - NAVER_CLIENT_SECRET_2=${NAVER_CLIENT_SECRET_2}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     bias-analysis-ai:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:4003/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 5
+  #     start_period: 30s
+  #   restart: unless-stopped
 
   # ================================
-  # Puppeteer Crawler - 방법 1: 환경변수 기반 (완벽한 시간차 분산)
+  # Puppeteer Crawler - 비활성화됨 (crawler-v2 사용)
   # ================================
 
-  puppeteer-crawler-1:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_1
-    expose:
-      - "4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=0
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
+  # puppeteer-crawler-1:
+  #   build:
+  #     context: ./backend/crawler
+  #     dockerfile: ./puppeteer-crawler/Dockerfile
+  #   container_name: fans_puppeteer_crawler_1
+  #   expose:
+  #     - "4004"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+  #     - AUTO_CRAWL=${AUTO_CRAWL:-true}
+  #     - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+  #     - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+  #     - REPLICA_INDEX=0
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   shm_size: '2gb'
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   restart: unless-stopped
 
-  puppeteer-crawler-2:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_2
-    expose:
-      - "4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=1
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
+  # puppeteer-crawler-2:
+  #   build:
+  #     context: ./backend/crawler
+  #     dockerfile: ./puppeteer-crawler/Dockerfile
+  #   container_name: fans_puppeteer_crawler_2
+  #   expose:
+  #     - "4004"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+  #     - AUTO_CRAWL=${AUTO_CRAWL:-true}
+  #     - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+  #     - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+  #     - REPLICA_INDEX=1
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   shm_size: '2gb'
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   restart: unless-stopped
 
-  puppeteer-crawler-3:
-    build:
-      context: ./backend/crawler
-      dockerfile: ./puppeteer-crawler/Dockerfile
-    container_name: fans_puppeteer_crawler_3
-    expose:
-      - "4004"
-    env_file:
-      - .env
-    environment:
-      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
-      - AUTO_CRAWL=${AUTO_CRAWL:-true}
-      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
-      - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
-      - REPLICA_INDEX=2
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - fans_network
-    shm_size: '2gb'
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
-    restart: unless-stopped
+  # puppeteer-crawler-3:
+  #   build:
+  #     context: ./backend/crawler
+  #     dockerfile: ./puppeteer-crawler/Dockerfile
+  #   container_name: fans_puppeteer_crawler_3
+  #   expose:
+  #     - "4004"
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+  #     - AUTO_CRAWL=${AUTO_CRAWL:-true}
+  #     - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+  #     - TOTAL_REPLICAS=${TOTAL_REPLICAS:-3}
+  #     - REPLICA_INDEX=2
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   networks:
+  #     - fans_network
+  #   shm_size: '2gb'
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         cpus: '1.0'
+  #         memory: 1G
+  #       reservations:
+  #         cpus: '0.5'
+  #         memory: 512M
+  #   restart: unless-stopped
 
   # ================================
   # Puppeteer Crawler - 방법 2: 랜덤 지연 (자동 확장)
@@ -279,7 +305,7 @@ services:
         condition: service_healthy
       summarize-ai:
         condition: service_healthy
-      api-crawler:
+      crawler-v2:
         condition: service_started
     networks:
       - fans_network

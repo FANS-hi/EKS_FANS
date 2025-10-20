@@ -33,7 +33,7 @@ aws sts get-caller-identity
 kubectl version --client
 
 # EKS 클러스터 연결 (배포 후)
-aws eks update-kubeconfig --region ap-northeast-2 --name dw-FANS-EKS-Cluster
+aws eks update-kubeconfig --region ap-northeast-2 --name eks-FANS-Cluster
 ```
 
 ### 3. Terraform 설치
@@ -86,10 +86,10 @@ terraform workspace list
 terraform plan
 
 # 주요 생성 리소스 확인:
-# - VPC (10.0.30.0/24)
-# - Public Subnet 2개
-# - Private Subnet 2개
-# - NAT Gateway 2개
+# - VPC (172.16.0.0/16 - FANS_VPC_EKS)
+# - Public Subnet 2개 (172.16.0.0/24, 172.16.1.0/24)
+# - Private Subnet 2개 (172.16.16.0/20, 172.16.32.0/20)
+# - NAT Gateway 2개 (Multi-AZ)
 # - EKS Cluster
 # - RDS PostgreSQL
 # - ElastiCache Redis
@@ -154,10 +154,10 @@ docker build -t fans-main-api .
 
 # 태그 지정
 docker tag fans-main-api:latest \
-  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api:latest
+  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/main-api:latest
 
 # ECR에 푸시
-docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api:latest
+docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/main-api:latest
 ```
 
 #### 2.3 AI Service 이미지 빌드 & 푸시
@@ -166,8 +166,8 @@ cd /Users/hodduk/Documents/git/AWS_FANS/ai/summarize
 
 docker build -t fans-summarize-ai .
 docker tag fans-summarize-ai:latest \
-  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/summarize-ai:latest
-docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/summarize-ai:latest
+  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/summarize-ai:latest
+docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/summarize-ai:latest
 ```
 
 #### 2.4 Bias Analysis AI 이미지 빌드 & 푸시
@@ -176,29 +176,21 @@ cd /Users/hodduk/Documents/git/AWS_FANS/ai/bias_analysis
 
 docker build -t fans-bias-ai .
 docker tag fans-bias-ai:latest \
-  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/bias-analysis-ai:latest
-docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/bias-analysis-ai:latest
+  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/bias-analysis-ai:latest
+docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/bias-analysis-ai:latest
 ```
 
-#### 2.5 API Crawler 이미지 빌드 & 푸시
+#### 2.5 Unified Crawler v2 이미지 빌드 & 푸시
 ```bash
-cd /Users/hodduk/Documents/git/AWS_FANS/backend/crawler/api_crawler
+cd /Users/hodduk/Documents/git/AWS_FANS/backend/crawler/crawler-v2
 
-docker build -t fans-api-crawler .
-docker tag fans-api-crawler:latest \
-  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/api-crawler:latest
-docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/api-crawler:latest
+docker build -t fans-crawler-v2 .
+docker tag fans-crawler-v2:latest \
+  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/crawler-v2:latest
+docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/crawler-v2:latest
 ```
 
-#### 2.6 Puppeteer Crawler 이미지 빌드 & 푸시
-```bash
-cd /Users/hodduk/Documents/git/AWS_FANS/backend/crawler/puppeteer_crawler
-
-docker build -t fans-puppeteer-crawler .
-docker tag fans-puppeteer-crawler:latest \
-  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/puppeteer-crawler:latest
-docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/puppeteer-crawler:latest
-```
+**참고**: API Crawler와 Puppeteer Crawler는 더 이상 사용하지 않습니다. Unified Crawler v2로 통합되었습니다.
 
 ---
 
@@ -207,7 +199,7 @@ docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/puppeteer-
 #### 3.1 EKS 클러스터 연결
 ```bash
 # kubeconfig 업데이트
-aws eks update-kubeconfig --region ap-northeast-2 --name dw-FANS-EKS-Cluster
+aws eks update-kubeconfig --region ap-northeast-2 --name eks-FANS-Cluster
 
 # 연결 확인
 kubectl get nodes
@@ -232,7 +224,7 @@ helm repo update
 
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   -n kube-system \
-  --set clusterName=dw-FANS-EKS-Cluster \
+  --set clusterName=eks-FANS-Cluster \
   --set serviceAccount.create=false \
   --set serviceAccount.name=aws-load-balancer-controller
 ```
@@ -258,7 +250,7 @@ kubectl get namespace fans
 # - email-password
 
 # Base64 인코딩 방법:
-echo -n "postgresql://fans_admin:CHANGE_ME_PLEASE_12345!@dw-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com:5432/fans_db" | base64
+echo -n "postgresql://fans_admin:CHANGE_ME_PLEASE_12345!@eks-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com:5432/fans_db" | base64
 
 # Secrets 적용
 kubectl apply -f secrets.yaml
@@ -310,7 +302,7 @@ kubectl get targetgroupbindings -n fans
 ```bash
 # Main API Target Group
 aws elbv2 describe-target-health \
-  --target-group-arn arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/dw-FANS-Main-API-TG/[TG-ID] \
+  --target-group-arn arn:aws:elasticloadbalancing:ap-northeast-2:907123164281:targetgroup/eks-FANS-Main-API-TG/[TG-ID] \
   --query 'TargetHealthDescriptions[*].[Target.Id,TargetHealth.State]' \
   --output table
 
@@ -370,13 +362,13 @@ ls build/static/js/
 #### 4.4 S3에 업로드
 ```bash
 # S3 버킷 이름 확인 (Terraform output에서)
-# dw-fans-frontend-production
+# eks-fans-frontend-production
 
 # S3에 업로드 (기존 파일 삭제하면서 동기화)
-aws s3 sync build/ s3://dw-fans-frontend-production --delete
+aws s3 sync build/ s3://eks-fans-frontend-production --delete
 
 # 업로드 확인
-aws s3 ls s3://dw-fans-frontend-production/
+aws s3 ls s3://eks-fans-frontend-production/
 
 # 결과 예시:
 #                            PRE static/
@@ -516,7 +508,7 @@ rm -rf build node_modules/.cache
 npm run build
 
 # S3 업로드
-aws s3 sync build/ s3://dw-fans-frontend-production --delete
+aws s3 sync build/ s3://eks-fans-frontend-production --delete
 
 # CloudFront 캐시 무효화
 aws cloudfront create-invalidation \
@@ -540,8 +532,8 @@ aws ecr get-login-password --region ap-northeast-2 | \
 # 이미지 빌드 & 푸시
 docker build -t fans-main-api .
 docker tag fans-main-api:latest \
-  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api:latest
-docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api:latest
+  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/main-api:latest
+docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/main-api:latest
 
 # Kubernetes Pod 재시작
 kubectl rollout restart deployment/main-api -n fans
@@ -643,7 +635,7 @@ EOF
 # 재빌드
 rm -rf build node_modules/.cache
 npm run build
-aws s3 sync build/ s3://dw-fans-frontend-production --delete
+aws s3 sync build/ s3://eks-fans-frontend-production --delete
 aws cloudfront create-invalidation --distribution-id [ID] --paths "/*"
 ```
 
@@ -689,7 +681,7 @@ kubectl get pods -n fans
 ```bash
 # 1. ECR 이미지 확인
 aws ecr describe-images \
-  --repository-name dw-fans/main-api \
+  --repository-name eks-fans/main-api \
   --query 'imageDetails[*].[imageTags,imagePushedAt]' \
   --output table
 
@@ -697,8 +689,8 @@ aws ecr describe-images \
 cd backend/api
 docker build -t fans-main-api .
 docker tag fans-main-api:latest \
-  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api:latest
-docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api:latest
+  907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/main-api:latest
+docker push 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/main-api:latest
 
 # 3. Pod 재시작
 kubectl rollout restart deployment/main-api -n fans
@@ -795,7 +787,7 @@ git checkout [COMMIT-HASH]
 
 # 재빌드 & 배포
 npm run build
-aws s3 sync build/ s3://dw-fans-frontend-production --delete
+aws s3 sync build/ s3://eks-fans-frontend-production --delete
 aws cloudfront create-invalidation --distribution-id [ID] --paths "/*"
 
 # 다시 최신으로 돌아오기
@@ -808,13 +800,13 @@ git checkout main
 ```bash
 # ECR에서 이전 이미지 확인
 aws ecr describe-images \
-  --repository-name dw-fans/main-api \
+  --repository-name eks-fans/main-api \
   --query 'imageDetails[*].[imageTags,imagePushedAt,imageDigest]' \
   --output table
 
 # Kubernetes Deployment 이미지 변경
 kubectl set image deployment/main-api \
-  main-api=907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api@sha256:[DIGEST] \
+  main-api=907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/main-api@sha256:[DIGEST] \
   -n fans
 
 # 또는 YAML 직접 수정
@@ -848,7 +840,7 @@ terraform apply
 ### CloudWatch Logs 확인
 ```bash
 # EKS 클러스터 로그 (Control Plane)
-aws logs tail /aws/eks/dw-FANS-EKS-Cluster/cluster --follow
+aws logs tail /aws/eks/eks-FANS-Cluster/cluster --follow
 
 # ALB 액세스 로그 (S3 버킷에 저장되어 있다면)
 aws s3 ls s3://[ALB-LOGS-BUCKET]/ --recursive
@@ -891,12 +883,240 @@ kubectl top pods -n fans
 
 ---
 
+## CI/CD 자동화 (GitHub Actions)
+
+### GitHub Actions 준비사항
+
+#### 1. IAM 사용자 생성
+
+**IAM 사용자**: `github-actions-deployer`
+
+```bash
+# AWS 콘솔에서:
+# 1. IAM → Users → Create user
+# 2. User name: github-actions-deployer
+# 3. Access type: Programmatic access
+# 4. Attach policy: GitHubActionsDeployPolicy (아래 참조)
+```
+
+#### 2. IAM 정책 생성
+
+**정책 파일**: `docs/iam-github-actions-policy.json`
+
+```bash
+# AWS 콘솔에서:
+# 1. IAM → Policies → Create policy
+# 2. JSON 탭에서 iam-github-actions-policy.json 내용 붙여넣기
+# 3. Policy name: GitHubActionsDeployPolicy
+# 4. Create policy
+```
+
+**주요 권한**:
+- ECR: 이미지 푸시 권한
+- ECS: 서비스 업데이트 권한 (향후 사용)
+- S3: 프론트엔드 배포 권한
+- CloudFront: 캐시 무효화 권한
+- IAM PassRole: ECS Task 실행 역할 전달 권한
+
+#### 3. Access Key 발급
+
+```bash
+# AWS 콘솔에서:
+# 1. IAM → Users → github-actions-deployer → Security credentials
+# 2. Create access key
+# 3. Use case: Application running outside AWS
+# 4. Access Key ID와 Secret Access Key를 안전하게 저장
+```
+
+#### 4. GitHub Secrets 설정
+
+**GitHub Repository → Settings → Secrets and variables → Actions**
+
+필수 Secrets:
+```bash
+AWS_ACCESS_KEY_ID=AKIA...
+AWS_SECRET_ACCESS_KEY=...
+AWS_ACCOUNT_ID=907123164281
+AWS_REGION=ap-northeast-2
+
+# ECR
+ECR_REGISTRY=907123164281.dkr.ecr.ap-northeast-2.amazonaws.com
+ECR_REPOSITORY_API=eks-fans/main-api
+ECR_REPOSITORY_AI=eks-fans/bias-analysis-ai
+ECR_REPOSITORY_CRAWLER=eks-fans/crawler-v2
+
+# S3/CloudFront
+S3_BUCKET=eks-fans-frontend-production
+CLOUDFRONT_DISTRIBUTION_ID=E...
+
+# 환경 변수
+DATABASE_URL=postgresql://...
+JWT_SECRET=...
+OPENAI_API_KEY=sk-...
+```
+
+### GitHub Actions 워크플로우
+
+#### 백엔드 자동 배포
+
+**파일**: `.github/workflows/deploy-backend.yml`
+
+```yaml
+name: Deploy Backend to ECR
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - { name: 'main-api', path: 'backend/api', repo: 'eks-fans/main-api' }
+          - { name: 'crawler-v2', path: 'backend/crawler/crawler-v2', repo: 'eks-fans/crawler-v2' }
+          - { name: 'bias-ai', path: 'backend/ai/bias-analysis-ai', repo: 'eks-fans/bias-analysis-ai' }
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd ${{ matrix.service.path }}
+          docker build -t ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:$IMAGE_TAG .
+          docker tag ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:$IMAGE_TAG \
+                     ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:latest
+          docker push ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:$IMAGE_TAG
+          docker push ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:latest
+
+      - name: Update EKS deployment (optional)
+        run: |
+          # EKS 배포 업데이트는 수동 또는 별도 워크플로우로 처리
+          echo "Image pushed: ${{ matrix.service.repo }}:${{ github.sha }}"
+```
+
+#### 프론트엔드 자동 배포
+
+**파일**: `.github/workflows/deploy-frontend.yml`
+
+```yaml
+name: Deploy Frontend to S3/CloudFront
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+env:
+  AWS_REGION: ap-northeast-2
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: frontend
+        run: |
+          # 환경 변수는 비워둠 (CloudFront를 통한 상대 경로 사용)
+          cat > .env << 'EOF'
+          REACT_APP_API_URL=
+          REACT_APP_API_BASE=
+          EOF
+          npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to S3
+        working-directory: frontend
+        run: |
+          aws s3 sync build/ s3://$S3_BUCKET --delete
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+            --paths "/*"
+```
+
+### 배포 프로세스
+
+#### 자동 배포 흐름
+```
+1. 코드 변경 후 main 브랜치에 push
+   ↓
+2. GitHub Actions 워크플로우 자동 실행
+   ↓
+3. Docker 이미지 빌드 및 ECR 푸시
+   ↓
+4. (옵션) EKS 배포 자동 업데이트
+   또는 수동으로 kubectl rollout restart 실행
+```
+
+#### 수동 EKS 배포 업데이트
+```bash
+# 새 이미지로 Pod 재시작
+kubectl rollout restart deployment/main-api -n fans
+
+# 또는 특정 이미지 태그로 업데이트
+kubectl set image deployment/main-api \
+  main-api=$ECR_REGISTRY/eks-fans/main-api:abc1234 \
+  -n fans
+```
+
+---
+
 ## 참고 문서
 
 - [AWS EKS 공식 문서](https://docs.aws.amazon.com/eks/)
 - [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
 - [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/)
 - [CloudFront 개발자 가이드](https://docs.aws.amazon.com/cloudfront/)
+- [GitHub Actions for AWS](https://github.com/aws-actions)
+- [배포 계획 문서](./deployment-plan.md)
 
 ---
 
@@ -909,6 +1129,6 @@ kubectl top pods -n fans
 
 ---
 
-**마지막 업데이트**: 2025-10-14
-**작성자**: DW (DongWon)
+**마지막 업데이트**: 2025-10-20
+**작성자**: DW (DongWon) + Claude Code
 **프로젝트**: FANS (Financial & Analytics News Service)

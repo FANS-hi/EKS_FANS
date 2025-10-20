@@ -1,0 +1,93 @@
+name: Deploy Frontend to S3/CloudFront
+
+on:
+  push:
+    branches: [main, eks]  # main과 eks 브랜치에서 작동
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
+
+env:
+  AWS_REGION: ap-northeast-2
+  S3_BUCKET: ${{ secrets.S3_BUCKET }}
+  CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build React app
+        working-directory: frontend
+        run: |
+          echo "🔨 Building React application..."
+
+          # 환경 변수는 비워둠 (CloudFront를 통한 상대 경로 사용)
+          cat > .env << 'EOF'
+          REACT_APP_API_URL=
+          REACT_APP_API_BASE=
+          EOF
+
+          npm run build
+
+          echo "✅ Build completed successfully"
+          ls -lh build/
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to S3
+        working-directory: frontend
+        run: |
+          echo "📤 Uploading to S3 bucket: $S3_BUCKET"
+          aws s3 sync build/ s3://$S3_BUCKET --delete
+          echo "✅ S3 sync completed"
+
+      - name: Invalidate CloudFront cache
+        if: env.CLOUDFRONT_DISTRIBUTION_ID != ''
+        run: |
+          echo "🔄 Creating CloudFront invalidation..."
+          INVALIDATION_ID=$(aws cloudfront create-invalidation \
+            --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+            --paths "/*" \
+            --query 'Invalidation.Id' \
+            --output text)
+
+          echo "✅ Invalidation created: $INVALIDATION_ID"
+          echo "⏳ Waiting for invalidation to complete..."
+
+          aws cloudfront wait invalidation-completed \
+            --distribution-id $CLOUDFRONT_DISTRIBUTION_ID \
+            --id $INVALIDATION_ID
+
+          echo "✅ CloudFront cache invalidated successfully"
+
+      - name: Deployment summary
+        run: |
+          echo "### 🎉 Frontend Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**S3 Bucket:** $S3_BUCKET" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+            echo "**CloudFront:** Cache invalidated" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Changes are now live!" >> $GITHUB_STEP_SUMMARY

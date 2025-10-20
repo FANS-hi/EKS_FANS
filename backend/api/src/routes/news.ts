@@ -5,6 +5,7 @@ import { Category } from "../entities/Category";
 import { Source } from "../entities/Source";
 import { ArticleStat } from "../entities/ArticleStat";
 import { Bookmark } from "../entities/Bookmark";
+import { BiasAnalysis } from "../entities/BiasAnalysis";
 import { ILike, In } from "typeorm";
 import logger from "../config/logger";
 
@@ -22,6 +23,10 @@ async function mapArticle(a: NewsArticle) {
 
   const category = await categoryRepo.findOne({ where: { id: a.categoryId } });
   const source = await sourceRepo.findOne({ where: { id: a.sourceId } });
+
+  // 편향성 분석 정보 가져오기
+  const biasRepo = AppDataSource.getRepository(BiasAnalysis);
+  const biasData = await biasRepo.findOne({ where: { articleId: a.id } });
 
   // 요약: AI 요약 → 본문 앞부분
   const fallbackSummary =
@@ -52,6 +57,12 @@ async function mapArticle(a: NewsArticle) {
     like_count: stats?.likeCount || 0,
     dislike_count: stats?.dislikeCount || 0,
     bookmark_count: stats?.bookmarkCount || 0,
+
+    // 편향성 분석 정보
+    bias_score: biasData?.biasScore || null,
+    political_leaning: biasData?.politicalLeaning || null,
+    confidence: biasData?.confidence || null,
+    analysis_data: biasData?.analysisData || null,
 
     // 시간 정보
     created_at: a.createdAt,
@@ -296,7 +307,6 @@ router.get("/news/by-source/:sourceName", async (req: Request, res: Response) =>
 router.get("/news/:id", async (req: Request, res: Response) => {
   try {
     const newsRepo = AppDataSource.getRepository(NewsArticle);
-    const statRepo = AppDataSource.getRepository(ArticleStat);
 
     const id = Number(req.params.id);
     const article = await newsRepo.findOne({
@@ -306,14 +316,17 @@ router.get("/news/:id", async (req: Request, res: Response) => {
 
     if (!article) return res.status(404).json({ error: "NOT_FOUND" });
 
-    // 조회수 증가 (stats 테이블에)
-    let stats = await statRepo.findOne({ where: { articleId: id } });
-    if (!stats) {
-      stats = statRepo.create({ articleId: id, viewCount: 1 });
-    } else {
-      stats.viewCount++;
+    // 조회수 증가 (stats 테이블에) - Race condition 방지
+    try {
+      await AppDataSource.query(`
+        INSERT INTO article_stats (article_id, view_count)
+        VALUES ($1, 1)
+        ON CONFLICT (article_id)
+        DO UPDATE SET view_count = article_stats.view_count + 1
+      `, [id]);
+    } catch (error) {
+      logger.warn('조회수 증가 실패:', error);
     }
-    await statRepo.save(stats);
 
     const result = await mapArticle(article);
 

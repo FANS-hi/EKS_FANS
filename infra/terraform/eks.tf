@@ -1,13 +1,12 @@
-# DW-FANS EKS Cluster
+# EKS-FANS EKS Cluster
 # Kubernetes 클러스터 및 노드 그룹
-# Owner: DW (DongWon)
 
 # ============================================
 # IAM Role for EKS Cluster
 # ============================================
 
 resource "aws_iam_role" "eks_cluster" {
-  name = "dw-FANS-EKS-Cluster-Role"
+  name = "eks-FANS-Cluster-Role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -21,7 +20,7 @@ resource "aws_iam_role" "eks_cluster" {
   })
 
   tags = {
-    Name        = "dw-FANS-EKS-Cluster-Role"
+    Name        = "eks-FANS-Cluster-Role"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -37,9 +36,9 @@ resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
 # ============================================
 
 resource "aws_eks_cluster" "main" {
-  name     = "dw-FANS-EKS-Cluster"
+  name     = "eks-FANS-Cluster"
   role_arn = aws_iam_role.eks_cluster.arn
-  version  = "1.28" # EKS 버전
+  version  = "1.30" # EKS 버전
 
   vpc_config {
     subnet_ids = [
@@ -57,7 +56,7 @@ resource "aws_eks_cluster" "main" {
   ]
 
   tags = {
-    Name        = "dw-FANS-EKS-Cluster"
+    Name        = "eks-FANS-Cluster"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -68,7 +67,7 @@ resource "aws_eks_cluster" "main" {
 # ============================================
 
 resource "aws_iam_role" "eks_nodes" {
-  name = "dw-FANS-EKS-Node-Role"
+  name = "eks-FANS-Node-Role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -82,7 +81,7 @@ resource "aws_iam_role" "eks_nodes" {
   })
 
   tags = {
-    Name        = "dw-FANS-EKS-Node-Role"
+    Name        = "eks-FANS-Node-Role"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -109,7 +108,7 @@ resource "aws_iam_role_policy_attachment" "eks_container_registry_policy" {
 
 resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
-  node_group_name = "dw-FANS-Node-Group"
+  node_group_name = "eks-FANS-Node-Group"
   node_role_arn   = aws_iam_role.eks_nodes.arn
   subnet_ids = [
     aws_subnet.fans_private_a.id
@@ -134,7 +133,7 @@ resource "aws_eks_node_group" "main" {
   ]
 
   tags = {
-    Name        = "dw-FANS-EKS-Node-Group"
+    Name        = "eks-FANS-Node-Group"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -154,7 +153,7 @@ resource "aws_iam_openid_connect_provider" "eks" {
   url             = aws_eks_cluster.main.identity[0].oidc[0].issuer
 
   tags = {
-    Name        = "dw-FANS-EKS-OIDC"
+    Name        = "eks-FANS-OIDC"
     Environment = var.environment
     Project     = var.project_name
   }

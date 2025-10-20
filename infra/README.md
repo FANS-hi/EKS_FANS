@@ -48,15 +48,15 @@ terraform apply
 - VPC, Subnets (Public/Private)
 - NAT Gateway (Multi-AZ)
 - Security Groups (5개)
-- EKS 클러스터 (fans-eks-cluster)
-- EKS 노드 그룹 (t3.medium × 2~4개)
+- EKS 클러스터 (eks-FANS-Cluster)
+- EKS 노드 그룹 (t3.large × 1~2개)
 - S3 + CloudFront (프론트엔드)
 
 ### 2. EKS 클러스터 접근 설정
 
 ```bash
 # kubeconfig 업데이트
-aws eks update-kubeconfig --name fans-eks-cluster --region ap-northeast-2
+aws eks update-kubeconfig --name eks-FANS-Cluster --region ap-northeast-2
 
 # 클러스터 확인
 kubectl get nodes
@@ -82,15 +82,44 @@ kubectl get pods -n fans
 kubectl get svc -n fans
 ```
 
-### 4. 크롤러 스케줄링 (CronJob)
+### 4. 자동 스케일링 설정 (기본 활성화)
+
+Crawler v2와 AI 서비스는 **기본적으로 자동 스케일링**이 적용됩니다.
 
 ```bash
-# CronJob 배포 (매 1분마다 실행)
-kubectl apply -f jobs/unified-crawler-job.yaml
+# HPA (Horizontal Pod Autoscaler) 적용
+kubectl apply -f autoscaling/
 
-# CronJob 상태 확인
-kubectl get cronjobs -n fans
-kubectl get jobs -n fans
+# HPA 상태 확인
+kubectl get hpa -n fans
+
+# 출력 예시:
+# NAME                   REFERENCE                     TARGETS         MINPODS   MAXPODS   REPLICAS
+# crawler-v2-hpa         Deployment/crawler-v2         15%/60%         1         3         1
+# summarize-ai-hpa       Deployment/summarize-ai       25%/70%         1         4         1
+# bias-analysis-ai-hpa   Deployment/bias-analysis-ai   20%/70%         1         4         1
+```
+
+**스케일링 설정:**
+- **Crawler v2**: 1~3개 (CPU 60%, 메모리 75%)
+- **Summarize AI**: 1~4개 (CPU 70%, 메모리 80%)
+- **Bias Analysis AI**: 1~4개 (CPU 70%, 메모리 80%)
+
+**수동 조절 (HPA 비활성화 시):**
+```bash
+# HPA 삭제 (수동 모드)
+kubectl delete hpa crawler-v2-hpa -n fans
+
+# 수동으로 replicas 조정
+kubectl scale deployment/crawler-v2 --replicas=2 -n fans
+
+# HPA 재활성화
+kubectl apply -f autoscaling/crawler-v2-hpa.yaml
+```
+
+**크롤러 로그 확인:**
+```bash
+kubectl logs -f deployment/crawler-v2 -n fans
 ```
 
 ## 📚 상세 가이드
@@ -125,14 +154,14 @@ kubectl get jobs -n fans
 
 ## 🏗️ 현재 배포 상태
 
-**인프라**: ✅ 배포 완료
-- VPC: 10.0.30.0/24
-- EKS 클러스터: fans-eks-cluster
-- 노드 그룹: 2개 t3.medium
+**인프라**: 설정 완료
+- VPC: FANS_VPC_EKS (172.16.0.0/16)
+- EKS 클러스터: eks-FANS-Cluster
+- 노드 그룹: 1~2개 t3.large
 
-**애플리케이션**: ✅ 배포 완료
-- Main API: 2 Pods (port 3000)
-- Unified Crawler: 2 Pods (port 4005)
+**애플리케이션**: 설정 완료
+- Main API: 1 Pod (port 3000)
+- Crawler v2: 1 Pod (port 4005)
 - Summarize AI: 1 Pod (port 8000)
 - Bias Analysis AI: 1 Pod (port 8002)
 

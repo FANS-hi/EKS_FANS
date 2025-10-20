@@ -1,41 +1,39 @@
-# FANS Puppeteer Crawler
-# Puppeteer-based web crawler (Port 4004)
-# 5분 주기로 동적 페이지 크롤링
+# FANS Crawler v2
+# Unified crawler (Daum + Naver) - Port 4005
+# 5분마다 자동 크롤링 (섹션당 20개)
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: puppeteer-crawler
+  name: crawler-v2
   namespace: fans
   labels:
-    app: puppeteer-crawler
+    app: crawler-v2
     tier: crawler
     project: FANS
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: puppeteer-crawler
+      app: crawler-v2
   template:
     metadata:
       labels:
-        app: puppeteer-crawler
+        app: crawler-v2
         tier: crawler
     spec:
       containers:
-      - name: puppeteer-crawler
-        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/puppeteer-crawler:latest
+      - name: crawler-v2
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/crawler-v2:latest
         ports:
-        - containerPort: 4004
+        - containerPort: 4005
           name: http
           protocol: TCP
 
         env:
-        - name: PORT
-          value: "4004"
-        - name: PUPPETEER_CRAWLER_PORT
-          value: "4004"
+        - name: UNIFIED_CRAWLER_PORT
+          value: "4005"
         - name: NODE_ENV
           value: "production"
         - name: DATABASE_URL
@@ -44,13 +42,16 @@ spec:
               name: fans-secrets
               key: database-url
         - name: DB_HOST
-          value: "dw-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
+          value: "eks-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
         - name: DB_PORT
           value: "5432"
         - name: DB_USERNAME
           value: "fans_admin"
         - name: DB_PASSWORD
-          value: "fans_password"
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: db-password
         - name: DB_NAME
           value: "fans_db"
         - name: PGSSLMODE
@@ -62,7 +63,9 @@ spec:
         - name: AUTO_CRAWL
           value: "true"
         - name: CRAWL_INTERVAL_MINUTES
-          value: "5"  # 5분마다 (API Crawler와 동일)
+          value: "5"
+        - name: CRAWL_LIMIT_PER_SECTION
+          value: "20"
 
         resources:
           requests:
@@ -75,7 +78,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: 4004
+            port: 4005
           initialDelaySeconds: 60
           periodSeconds: 30
           timeoutSeconds: 10
@@ -84,7 +87,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /health
-            port: 4004
+            port: 4005
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
@@ -94,16 +97,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: puppeteer-crawler
+  name: crawler-v2
   namespace: fans
   labels:
-    app: puppeteer-crawler
+    app: crawler-v2
 spec:
   type: ClusterIP
   ports:
-  - port: 4004
-    targetPort: 4004
+  - port: 4005
+    targetPort: 4005
     protocol: TCP
     name: http
   selector:
-    app: puppeteer-crawler
+    app: crawler-v2

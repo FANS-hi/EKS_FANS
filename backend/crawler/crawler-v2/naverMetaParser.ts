@@ -144,8 +144,16 @@ export class NaverMetaParser {
           const removeSelectors = contentEl.querySelectorAll('script, style, .ad, figure, .btn_fold');
           removeSelectors.forEach(el => el.remove());
 
-          // 본문 텍스트
-          result.content = contentEl.textContent?.trim() || '';
+          // 본문 텍스트 (문단별로 추출)
+          const paragraphs: string[] = [];
+          const pElements = contentEl.querySelectorAll('p');
+          pElements.forEach(p => {
+            const text = p.textContent?.trim();
+            if (text && text.length > 0) {
+              paragraphs.push(text);
+            }
+          });
+          result.content = paragraphs.length > 0 ? paragraphs.join('\n\n') : (contentEl.textContent?.trim() || '');
         }
 
         // 4. 이미지 폴백

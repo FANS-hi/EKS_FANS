@@ -1,0 +1,67 @@
+name: Deploy Backend to ECR
+
+on:
+  push:
+    branches: [main, eks]  # main과 eks 브랜치에서 작동
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - { name: 'main-api', path: 'backend/api', repo: 'eks-fans/main-api' }
+          - { name: 'crawler-v2', path: 'backend/crawler/crawler-v2', repo: 'eks-fans/crawler-v2' }
+          - { name: 'bias-ai', path: 'backend/ai/bias-analysis-ai', repo: 'eks-fans/bias-analysis-ai' }
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push Docker image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd ${{ matrix.service.path }}
+
+          echo "🔨 Building Docker image for ${{ matrix.service.name }}..."
+          docker build -t ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:$IMAGE_TAG .
+
+          echo "🏷️ Tagging image as latest..."
+          docker tag ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:$IMAGE_TAG \
+                     ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:latest
+
+          echo "📤 Pushing image to ECR..."
+          docker push ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:$IMAGE_TAG
+          docker push ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:latest
+
+          echo "✅ Successfully pushed ${{ matrix.service.name }}"
+
+      - name: Image info
+        run: |
+          echo "### 🎉 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Service:** ${{ matrix.service.name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** ${{ secrets.ECR_REGISTRY }}/${{ matrix.service.repo }}:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status:** ✅ Pushed to ECR" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Update EKS deployment: \`kubectl rollout restart deployment/${{ matrix.service.name }} -n fans\`" >> $GITHUB_STEP_SUMMARY

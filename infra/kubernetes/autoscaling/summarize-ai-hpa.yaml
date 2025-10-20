@@ -1,0 +1,49 @@
+# FANS Summarize AI - Horizontal Pod Autoscaler
+# AI 모델 추론 부하에 따른 자동 스케일링
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: summarize-ai-hpa
+  namespace: fans
+  labels:
+    app: summarize-ai
+    tier: ai
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: summarize-ai
+  minReplicas: 1
+  maxReplicas: 4  # AI 서비스는 부하가 크므로 최대 4개까지
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70  # AI 모델 추론 시 CPU 많이 사용
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80  # 모델 로딩으로 메모리 많이 사용
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 600  # 10분 동안 안정화 (모델 로딩 시간 고려)
+      policies:
+      - type: Pods
+        value: 1  # 한 번에 1개씩만 줄임 (모델 언로드 부담)
+        periodSeconds: 120
+    scaleUp:
+      stabilizationWindowSeconds: 30  # 빠르게 스케일 업
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max

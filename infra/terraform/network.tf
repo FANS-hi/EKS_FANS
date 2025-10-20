@@ -1,6 +1,5 @@
-# DW-FANS Network Resources
+# EKS-FANS Network Resources
 # Subnets, NAT Gateways, Route Tables
-# Owner: DW (DongWon)
 
 # ============================================
 # Subnets (4개)
@@ -9,12 +8,12 @@
 # Public Subnet A (AZ-2a)
 resource "aws_subnet" "fans_public_a" {
   vpc_id                  = data.aws_vpc.existing.id
-  cidr_block              = "10.0.30.32/27"
+  cidr_block              = "172.16.0.0/24"  # 256 IP addresses
   availability_zone       = "${var.aws_region}a"
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "dw-FANS-Public-A"
+    Name        = "eks-FANS-Public-A"
     Environment = var.environment
     Project     = var.project_name
     Type        = "Public"
@@ -25,12 +24,12 @@ resource "aws_subnet" "fans_public_a" {
 # Public Subnet B (AZ-2c)
 resource "aws_subnet" "fans_public_b" {
   vpc_id                  = data.aws_vpc.existing.id
-  cidr_block              = "10.0.30.64/27"
+  cidr_block              = "172.16.1.0/24"  # 256 IP addresses
   availability_zone       = "${var.aws_region}c"
   map_public_ip_on_launch = true
 
   tags = {
-    Name        = "dw-FANS-Public-B"
+    Name        = "eks-FANS-Public-B"
     Environment = var.environment
     Project     = var.project_name
     Type        = "Public"
@@ -41,11 +40,11 @@ resource "aws_subnet" "fans_public_b" {
 # Private Subnet A (AZ-2a)
 resource "aws_subnet" "fans_private_a" {
   vpc_id            = data.aws_vpc.existing.id
-  cidr_block        = "10.0.30.128/26"
+  cidr_block        = "172.16.16.0/20"  # 4,096 IP addresses (EKS Pod IP용)
   availability_zone = "${var.aws_region}a"
 
   tags = {
-    Name        = "dw-FANS-Private-A"
+    Name        = "eks-FANS-Private-A"
     Environment = var.environment
     Project     = var.project_name
     Type        = "Private"
@@ -56,11 +55,11 @@ resource "aws_subnet" "fans_private_a" {
 # Private Subnet B (AZ-2c)
 resource "aws_subnet" "fans_private_b" {
   vpc_id            = data.aws_vpc.existing.id
-  cidr_block        = "10.0.30.192/26"
+  cidr_block        = "172.16.32.0/20"  # 4,096 IP addresses (EKS Pod IP용)
   availability_zone = "${var.aws_region}c"
 
   tags = {
-    Name        = "dw-FANS-Private-B"
+    Name        = "eks-FANS-Private-B"
     Environment = var.environment
     Project     = var.project_name
     Type        = "Private"
@@ -76,7 +75,7 @@ resource "aws_eip" "nat_a" {
   domain = "vpc"
 
   tags = {
-    Name        = "dw-FANS-NAT-EIP-A"
+    Name        = "eks-FANS-NAT-EIP-A"
     Environment = var.environment
     Project     = var.project_name
     Purpose     = "NAT Gateway A"
@@ -87,7 +86,7 @@ resource "aws_eip" "nat_b" {
   domain = "vpc"
 
   tags = {
-    Name        = "dw-FANS-NAT-EIP-B"
+    Name        = "eks-FANS-NAT-EIP-B"
     Environment = var.environment
     Project     = var.project_name
     Purpose     = "NAT Gateway B"
@@ -103,7 +102,7 @@ resource "aws_nat_gateway" "nat_a" {
   subnet_id     = aws_subnet.fans_public_a.id
 
   tags = {
-    Name        = "dw-FANS-NAT-Gateway-A"
+    Name        = "eks-FANS-NAT-Gateway-A"
     Environment = var.environment
     Project     = var.project_name
     AZ          = "${var.aws_region}a"
@@ -117,7 +116,7 @@ resource "aws_nat_gateway" "nat_b" {
   subnet_id     = aws_subnet.fans_public_b.id
 
   tags = {
-    Name        = "dw-FANS-NAT-Gateway-B"
+    Name        = "eks-FANS-NAT-Gateway-B"
     Environment = var.environment
     Project     = var.project_name
     AZ          = "${var.aws_region}c"
@@ -142,7 +141,7 @@ resource "aws_route_table" "public" {
   }
 
   tags = {
-    Name        = "dw-FANS-Public-RT"
+    Name        = "eks-FANS-Public-RT"
     Environment = var.environment
     Project     = var.project_name
     Type        = "Public"
@@ -161,7 +160,7 @@ resource "aws_route_table" "private_a" {
   }
 
   tags = {
-    Name        = "dw-FANS-Private-A-RT"
+    Name        = "eks-FANS-Private-A-RT"
     Environment = var.environment
     Project     = var.project_name
     Type        = "Private"
@@ -181,7 +180,7 @@ resource "aws_route_table" "private_b" {
   }
 
   tags = {
-    Name        = "dw-FANS-Private-B-RT"
+    Name        = "eks-FANS-Private-B-RT"
     Environment = var.environment
     Project     = var.project_name
     Type        = "Private"

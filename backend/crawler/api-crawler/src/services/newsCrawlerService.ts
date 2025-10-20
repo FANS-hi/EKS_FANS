@@ -357,15 +357,17 @@ class NewsCrawlerService {
       .replace(/뉴스 요약쏙|AI 요약은|OpenAI의 최신 기술을/g, '')
       .replace(/읽는 재미의 발견|새로워진|크롬브라우저만 가능/g, '')
       .replace(/웹 알림 동의|다양한 경제, 산업 현장의/g, '')
-      .replace(/무단전재 및 재배포 금지|저작권자|ⓒ|Copyright|copyright/g, '')
+      .replace(/무단\s*전재\s*및\s*재배포\s*금지|저작권자|ⓒ|©|Copyright|copyright|NEWSIS\.COM/g, '')
       .replace(/기사입력|기사수정|최종수정|발행일|등록일|기사제보|보도자료/g, '')
+      // 날짜/시간 패턴 제거 (다양한 포맷)
+      .replace(/등록\s*\d{4}[.-년]\d{1,2}[.-월]\d{1,2}[일]?\s*\d{1,2}:\d{2}(:\d{2})?/g, '')
+      .replace(/수정\s*\d{4}[.-년]\d{1,2}[.-월]\d{1,2}[일]?\s*\d{1,2}:\d{2}(:\d{2})?/g, '')
       // 연관기사 관련 텍스트 제거
-      .replace(/관련기사|추천기사|인기기사|많이 본 뉴스|실시간 뉴스|HOT 클릭/g, '')
-      .replace(/다른기사 보기|이 기사를|댓글|좋아요/g, '')
+      .replace(/관련기사|추천기사|인기기사|많이\s*본\s*뉴스|실시간\s*뉴스|HOT\s*클릭/g, '')
+      .replace(/다른기사\s*보기|이\s*기사를|댓글|좋아요/g, '')
       // 기자 서명 패턴 정리
       .replace(/기자\s*구독\s*공유하기/g, '')
       .replace(/\s*기자\s*수정\s*\d{4}-\d{2}-\d{2}/g, '')
-      .replace(/등록\s*\d{4}-\d{2}-\d{2}/g, '')
       .replace(/\s*기자\s*[a-zA-Z0-9._%+-]+@[^\s]*/g, '') // 기자 이메일
       // 이메일 주소 제거
       .replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g, '')
@@ -696,7 +698,7 @@ class NewsCrawlerService {
         });
 
         if (paragraphs.length > 0) {
-          const allText = paragraphs.join(' ');
+          const allText = paragraphs.join('\n\n');
           if (allText.length > 100 && this.isValidContent(allText)) {
             content = allText;
             logger.debug(`[DEBUG] 대체 방법으로 본문 추출 완료: ${content.substring(0, 100)}...`);

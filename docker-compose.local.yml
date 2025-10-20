@@ -1,0 +1,195 @@
+services:
+  # ================================
+  # 데이터베이스
+  # ================================
+
+  # PostgreSQL Database Server (Port: 5432)
+  postgres:
+    image: postgres:15
+    container_name: fans_postgres
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env.local  # 로컬용 환경변수
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - fans_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-fans_user} -d ${POSTGRES_DB:-fans_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ================================
+  # AI 서비스들
+  # ================================
+
+  # AI Summarization Service (Port: 8000)
+  summarize-ai:
+    build: ./backend/ai/summarize-ai
+    container_name: fans_summarize_ai
+    ports:
+      - "8000:8000"  # 로컬 테스트용 포트 노출
+    env_file:
+      - .env.local
+    environment:
+      - PORT=${SUMMARIZE_AI_PORT:-8000}
+      - MODEL_NAME=${MODEL_NAME}
+      - MAX_SUMMARY_LENGTH=${MAX_SUMMARY_LENGTH}
+    networks:
+      - fans_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ================================
+  # 편향 분석 AI 서비스
+  # ================================
+
+  # AI Bias Analysis Service (Port: 8002)
+  bias-analysis-ai:
+    build: ./backend/ai/bias-analysis-ai
+    container_name: fans_bias_analysis_ai
+    ports:
+      - "8002:8002"  # 로컬 테스트용 포트 노출
+    env_file:
+      - .env.local
+    environment:
+      - PORT=${BIAS_ANALYSIS_AI_PORT:-8002}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fans_network
+    volumes:
+      - ./backend/ai/bias-analysis-ai:/app
+      - /app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
+
+  # ================================
+  # 크롤러 서비스들 (로컬 테스트용 - 1개만)
+  # ================================
+
+  # API Crawler Service (Port: 4003)
+  api-crawler:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./api-crawler/Dockerfile
+    container_name: fans_api_crawler
+    ports:
+      - "4003:4003"  # 로컬 테스트용 포트 노출
+    env_file:
+      - .env.local
+    environment:
+      - API_CRAWLER_PORT=${API_CRAWLER_PORT:-4003}
+      - AUTO_CRAWL=${AUTO_CRAWL:-true}
+      - CRAWL_INTERVAL_MINUTES=${CRAWL_INTERVAL_MINUTES:-5}
+      - CRAWL_LIMIT_PER_CATEGORY=${CRAWL_LIMIT_PER_CATEGORY:-5}
+      - NAVER_SEARCH_CLIENT_ID=${NAVER_SEARCH_CLIENT_ID}
+      - NAVER_SEARCH_CLIENT_SECRET=${NAVER_SEARCH_CLIENT_SECRET}
+      - NAVER_CLIENT_ID_2=${NAVER_CLIENT_ID_2}
+      - NAVER_CLIENT_SECRET_2=${NAVER_CLIENT_SECRET_2}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      bias-analysis-ai:
+        condition: service_healthy
+    networks:
+      - fans_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # Puppeteer Crawler (로컬 테스트용 - 1개만)
+  puppeteer-crawler-1:
+    build:
+      context: ./backend/crawler
+      dockerfile: ./puppeteer-crawler/Dockerfile
+    container_name: fans_puppeteer_crawler_1
+    ports:
+      - "4004:4004"  # 로컬 테스트용 포트 노출
+    env_file:
+      - .env.local
+    environment:
+      - PUPPETEER_CRAWLER_PORT=${PUPPETEER_CRAWLER_PORT:-4004}
+      - AUTO_CRAWL=${AUTO_CRAWL:-true}
+      - CRAWL_INTERVAL=${CRAWL_INTERVAL:-180000}
+      - TOTAL_REPLICAS=1  # 로컬에서는 1개만
+      - REPLICA_INDEX=0
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - fans_network
+    shm_size: '2gb'
+    restart: unless-stopped
+
+  # ================================
+  # Redis (캐싱용)
+  # ================================
+  redis:
+    image: redis:7-alpine
+    container_name: fans_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - fans_network
+    restart: unless-stopped
+
+  # ================================
+  # 메인 API 서비스
+  # ================================
+
+  # Main Backend API (Port: 3000)
+  main-api:
+    build: ./backend/api
+    container_name: fans_main_api
+    ports:
+      - "3000:3000"  # 로컬 테스트용 포트 노출
+    env_file:
+      - .env.local
+    environment:
+      - PORT=${PORT:-3000}
+      - NODE_ENV=${NODE_ENV:-development}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      summarize-ai:
+        condition: service_healthy
+      api-crawler:
+        condition: service_started
+    networks:
+      - fans_network
+    volumes:
+      - ./backend/api:/app
+      - /app/node_modules
+      - ./backend/api/uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  fans_network:
+    driver: bridge

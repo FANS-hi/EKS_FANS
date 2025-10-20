@@ -1,5 +1,5 @@
 # FANS AWS Infrastructure - Terraform Configuration
-# 기존 VPC (10.0.30.0/24) 활용
+# VPC: FANS_VPC_EKS (172.16.0.0/16)
 
 terraform {
   required_version = ">= 1.0"

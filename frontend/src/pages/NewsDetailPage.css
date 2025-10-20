@@ -513,6 +513,7 @@
 
 .article-content-text p {
   margin-bottom: 16px;
+  white-space: pre-line;
 }
 
 /* 댓글 섹션 */

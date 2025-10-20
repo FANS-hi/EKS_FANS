@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { AppDataSource } from '../../config/database';
 import { Category } from '../../entities/Category';
 import { Source } from '../../entities/Source';
+import { In } from 'typeorm';
 import logger from '../../config/logger';
 
 const router = Router();
@@ -21,7 +22,10 @@ router.get('/common/categories', async (req: Request, res: Response) => {
       order: { id: 'ASC' }
     });
 
-    const categoryNames = categories.map(category => category.name);
+    // "기타" 카테고리 제외하고 나머지만 반환
+    const categoryNames = categories
+      .filter(category => category.name !== '기타')
+      .map(category => category.name);
 
     res.json({
       success: true,
@@ -41,15 +45,18 @@ router.get('/common/categories', async (req: Request, res: Response) => {
 router.get('/common/media-sources', async (req: Request, res: Response) => {
   try {
     const sourceRepository = AppDataSource.getRepository(Source);
+
+    // init.sql에 정의된 14개 언론사 ID만 화이트리스트로 가져오기
+    const whitelistIds = [1, 20, 21, 22, 23, 25, 28, 32, 55, 56, 214, 421, 437, 448];
     const sources = await sourceRepository.find({
-      order: { id: 'ASC' }
+      where: { id: In(whitelistIds) }
     });
 
-    // "기타-"로 시작하지 않는 주요 언론사만 필터링
-    const majorSources = sources.filter(source => !source.name.startsWith('기타-'));
+    // ID 순서대로 정렬
+    sources.sort((a, b) => a.id - b.id);
 
     // 프론트엔드에서 기대하는 형태로 변환 (name, domain, logo_url 포함)
-    const sourcesWithDomain = majorSources.map(source => ({
+    const sourcesWithDomain = sources.map(source => ({
       name: source.name,
       domain: `${source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`, // 임시 도메인 생성
       oid: source.id.toString(),
@@ -96,17 +103,23 @@ router.get('/common/all', async (req: Request, res: Response) => {
     const categoryRepository = AppDataSource.getRepository(Category);
     const sourceRepository = AppDataSource.getRepository(Source);
 
+    // init.sql에 정의된 14개 언론사 ID만 화이트리스트로 가져오기
+    const whitelistIds = [1, 20, 21, 22, 23, 25, 28, 32, 55, 56, 214, 421, 437, 448];
+
     const [categories, sources] = await Promise.all([
       categoryRepository.find({ order: { id: 'ASC' } }),
-      sourceRepository.find({ order: { id: 'ASC' } })
+      sourceRepository.find({ where: { id: In(whitelistIds) } })
     ]);
 
-    const categoryNames = categories.map(category => category.name);
+    // "기타" 카테고리 제외하고 나머지만 반환
+    const categoryNames = categories
+      .filter(category => category.name !== '기타')
+      .map(category => category.name);
 
-    // "기타-"로 시작하지 않는 주요 언론사만 필터링
-    const majorSources = sources.filter(source => !source.name.startsWith('기타-'));
+    // ID 순서대로 정렬
+    sources.sort((a, b) => a.id - b.id);
 
-    const sourcesWithDomain = majorSources.map(source => ({
+    const sourcesWithDomain = sources.map(source => ({
       name: source.name,
       domain: `${source.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
       oid: source.id.toString(),

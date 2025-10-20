@@ -1,0 +1,49 @@
+# FANS Crawler v2 - Horizontal Pod Autoscaler
+# CPU/메모리 기반 자동 스케일링
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: crawler-v2-hpa
+  namespace: fans
+  labels:
+    app: crawler-v2
+    tier: crawler
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: crawler-v2
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60  # CPU 60% 이상 시 스케일 아웃
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75  # 메모리 75% 이상 시 스케일 아웃
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 5분 동안 안정화 후 스케일 다운
+      policies:
+      - type: Percent
+        value: 50  # 한 번에 50%씩 줄임
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60  # 1분 후 스케일 업
+      policies:
+      - type: Percent
+        value: 100  # 한 번에 2배로 늘림
+        periodSeconds: 30
+      - type: Pods
+        value: 2  # 또는 최대 2개씩 늘림
+        periodSeconds: 30
+      selectPolicy: Max  # 둘 중 큰 값 선택

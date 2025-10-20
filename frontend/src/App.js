@@ -37,6 +37,10 @@ function HomePageWrapper() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // 무한 루프 방지를 위한 ref
+  const lastAppliedCategoryRef = useRef(null);
+  const lastAppliedSourceRef = useRef(null);
+
   // 주식 데이터
   const [stockData, setStockData] = useState([]);
   const [stockError, setStockError] = useState(null);
@@ -76,7 +80,7 @@ function HomePageWrapper() {
     const params = new URLSearchParams({
       limit: '60',
       sort: 'created_at',
-      topics: '정치,경제,사회,세계,IT/과학,생활/문화',
+      topics: '정치,경제,사회,세계,IT/과학,생활/문화,스포츠,연예',
       _t: Date.now() // 캐시 무효화용 타임스탬프
     });
     const url = `${API_BASE}/api/feed?${params.toString()}`;
@@ -252,24 +256,67 @@ function HomePageWrapper() {
   }, [sourceFilteredNews, categoryFilteredNews, feedNews, currentList]);
 
 
-  const handleCategoryFilter = (category) => {
+  const handleCategoryFilter = async (category) => {
     if (!category || category === '전체') {
       setCategoryFilteredNews(null);
       setSourceFilteredNews(null);
+      lastAppliedCategoryRef.current = null;
+      // URL도 초기화
+      navigate('/', { replace: true });
       return;
     }
-    const base = isSearching ? searchResults : feedNews;
-    const filtered = base.filter((n) => n.category === category);
-    setCategoryFilteredNews(filtered);
-    setSourceFilteredNews(null); // 카테고리 변경 시 미디어 소스 필터 초기화
+
+    // 이미 적용된 카테고리면 다시 호출하지 않음
+    if (lastAppliedCategoryRef.current === category) {
+      return;
+    }
+
+    lastAppliedCategoryRef.current = category;
+
+    // 서버 API 호출로 해당 카테고리 전체 기사 가져오기
+    try {
+      const url = `${API_BASE}/api/feed?topics=${encodeURIComponent(category)}&limit=200&sort=created_at`;
+      console.log(`🔍 카테고리 필터링: ${category}, URL: ${url}`);
+
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      console.log(`- ${category} 카테고리 기사: ${data.items?.length || 0}개`);
+
+      setCategoryFilteredNews(Array.isArray(data.items) ? data.items : []);
+      setSourceFilteredNews(null); // 카테고리 변경 시 미디어 소스 필터 초기화
+
+      // URL 업데이트 (뒤로가기 지원을 위해)
+      navigate(`/?category=${encodeURIComponent(category)}`, { replace: true });
+    } catch (error) {
+      console.error('카테고리 필터링 API 실패:', error);
+      // 폴백: 클라이언트 필터링
+      const base = isSearching ? searchResults : feedNews;
+      const filtered = base.filter((n) => n.category === category);
+      setCategoryFilteredNews(filtered);
+      setSourceFilteredNews(null);
+
+      // URL 업데이트
+      navigate(`/?category=${encodeURIComponent(category)}`, { replace: true });
+    }
   };
 
   const handleSourceFilter = async (sourceName) => {
     console.log('🔍 소스 필터링:', sourceName);
     if (!sourceName) {
       setSourceFilteredNews(null);
+      lastAppliedSourceRef.current = null;
+      navigate('/', { replace: true });
       return;
     }
+
+    // 이미 적용된 소스면 다시 호출하지 않음
+    if (lastAppliedSourceRef.current === sourceName) {
+      return;
+    }
+
+    lastAppliedSourceRef.current = sourceName;
 
     // 언론사별 전용 API 호출
     try {
@@ -292,12 +339,18 @@ function HomePageWrapper() {
         hasMore: data.pagination?.hasMore || false,
         isLoading: false
       });
+
+      // URL 업데이트 (뒤로가기 지원을 위해)
+      navigate(`/?source=${encodeURIComponent(sourceName)}`, { replace: true });
     } catch (error) {
       console.error('언론사별 API 호출 실패:', error);
       // 실패 시 기존 방식으로 폴백
       const base = categoryFilteredNews || (isSearching ? searchResults : feedNews);
       const filtered = base.filter((n) => n.source === sourceName);
       setSourceFilteredNews(filtered);
+
+      // URL 업데이트
+      navigate(`/?source=${encodeURIComponent(sourceName)}`, { replace: true });
     }
   };
 
@@ -364,10 +417,10 @@ function HomePageWrapper() {
       handleSourceFilter(sourceParam);
     }
 
-    // URL 파라미터가 있었다면 깔끔한 URL로 정리
-    if (searchParam || categoryParam || sourceParam) {
-      navigate('/', { replace: true });
-    }
+    // URL 파라미터 유지 (뒤로가기 기능을 위해)
+    // if (searchParam || categoryParam || sourceParam) {
+    //   navigate('/', { replace: true });
+    // }
   }, [location.search, navigate]);
 
   /* -------------------- 렌더 -------------------- */
