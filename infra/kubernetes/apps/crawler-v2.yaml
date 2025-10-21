@@ -13,7 +13,7 @@ metadata:
     tier: crawler
     project: FANS
 spec:
-  replicas: 1
+  replicas: 1  # 크롤러 활성화
   selector:
     matchLabels:
       app: crawler-v2
@@ -37,10 +37,7 @@ spec:
         - name: NODE_ENV
           value: "production"
         - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: fans-secrets
-              key: database-url
+          value: "postgresql://fans_admin:$(DB_PASSWORD)@eks-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com:5432/fans_db"
         - name: DB_HOST
           value: "eks-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
         - name: DB_PORT
@@ -50,8 +47,8 @@ spec:
         - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: fans-secrets
-              key: db-password
+              name: fans-secret
+              key: DB_PASSWORD
         - name: DB_NAME
           value: "fans_db"
         - name: PGSSLMODE

@@ -1,16 +1,16 @@
-# DW-FANS Frontend Infrastructure
+# EKS-FANS Frontend Infrastructure
 # S3 (React 빌드 파일) + CloudFront (CDN)
-# Owner: DW (DongWon)
+# Owner: EKS Team
 
 # ============================================
 # S3 Bucket for React Build Files
 # ============================================
 
 resource "aws_s3_bucket" "frontend" {
-  bucket = "dw-fans-frontend-${var.environment}"
+  bucket = "eks-fans-frontend-${var.environment}"
 
   tags = {
-    Name        = "dw-FANS-Frontend-Bucket"
+    Name        = "eks-FANS-Frontend-Bucket"
     Environment = var.environment
     Project     = var.project_name
     Purpose     = "React Build Files"
@@ -54,7 +54,7 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
 # ============================================
 
 resource "aws_cloudfront_origin_access_identity" "frontend" {
-  comment = "dw-FANS Frontend OAI"
+  comment = "eks-FANS Frontend OAI"
 }
 
 # S3 Bucket Policy (CloudFront만 접근 허용)
@@ -84,7 +84,7 @@ resource "aws_s3_bucket_policy" "frontend" {
 resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
-  comment             = "dw-FANS Frontend Distribution"
+  comment             = "eks-FANS Frontend Distribution"
   default_root_object = "index.html"
   price_class         = "PriceClass_200" # 아시아, 북미, 유럽
   aliases             = ["www.fans.ai.kr"]
@@ -92,7 +92,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   # S3 Origin (프론트엔드)
   origin {
     domain_name = aws_s3_bucket.frontend.bucket_regional_domain_name
-    origin_id   = "S3-dw-fans-frontend"
+    origin_id   = "S3-eks-fans-frontend"
 
     s3_origin_config {
       origin_access_identity = aws_cloudfront_origin_access_identity.frontend.cloudfront_access_identity_path
@@ -138,7 +138,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-dw-fans-frontend"
+    target_origin_id = "S3-eks-fans-frontend"
 
     forwarded_values {
       query_string = false
@@ -182,7 +182,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   tags = {
-    Name        = "dw-FANS-CloudFront"
+    Name        = "eks-FANS-CloudFront"
     Environment = var.environment
     Project     = var.project_name
     Purpose     = "Frontend CDN"

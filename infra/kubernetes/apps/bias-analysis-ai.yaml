@@ -1,5 +1,5 @@
 # FANS Bias Analysis AI Service
-# Python FastAPI + scikit-learn (Port 8002)
+# Python FastAPI + scikit-learn (Port 8100)
 
 ---
 apiVersion: apps/v1
@@ -24,25 +24,27 @@ spec:
     spec:
       containers:
       - name: bias-analysis-ai
-        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/bias-analysis-ai:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/bias-analysis-ai:latest
         ports:
-        - containerPort: 8002
+        - containerPort: 8100
           name: http
           protocol: TCP
 
         # 환경변수
         env:
         - name: PORT
-          value: "8002"
+          value: "8100"
         - name: PYTHON_ENV
           value: "production"
         - name: MODEL_PATH
           value: "/app/models"
         - name: DATABASE_URL
+          value: "postgresql://fans_admin:$(DB_PASSWORD)@eks-fans-postgres.cz884ewuuhlv.ap-northeast-2.amazonaws.com:5432/fans_db"
+        - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: fans-secrets
-              key: database-url
+              name: fans-secret
+              key: DB_PASSWORD
 
         # 리소스 제한 (ML 모델 로딩으로 메모리 많이 사용)
         resources:
@@ -62,7 +64,7 @@ spec:
         livenessProbe:
           httpGet:
             path: /health
-            port: 8002
+            port: 8100
           initialDelaySeconds: 60  # ML 모델 로딩 시간 고려
           periodSeconds: 15
           timeoutSeconds: 10
@@ -71,7 +73,7 @@ spec:
         readinessProbe:
           httpGet:
             path: /health
-            port: 8002
+            port: 8100
           initialDelaySeconds: 30
           periodSeconds: 10
           timeoutSeconds: 5
@@ -93,8 +95,8 @@ metadata:
 spec:
   type: NodePort
   ports:
-  - port: 8002
-    targetPort: 8002
+  - port: 8100
+    targetPort: 8100
     protocol: TCP
     name: http
   selector:

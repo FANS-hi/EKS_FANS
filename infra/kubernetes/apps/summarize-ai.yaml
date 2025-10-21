@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
       - name: summarize-ai
-        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/summarize-ai:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/summarize-ai:latest
         ports:
         - containerPort: 8000
           name: http

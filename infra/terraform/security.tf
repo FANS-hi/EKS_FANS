@@ -1,6 +1,6 @@
-# DW-FANS Security Groups
+# EKS-FANS Security Groups
 # Zero Trust 원칙 기반 설계
-# Owner: DW (DongWon)
+# Owner: EKS Team
 # Circular dependency 해결: SG 생성과 Rule 추가를 분리
 
 # ============================================
@@ -9,12 +9,12 @@
 
 # SG-1: ALB Security Group
 resource "aws_security_group" "alb" {
-  name        = "dw-FANS-ALB-SG"
+  name        = "eks-FANS-ALB-SG"
   description = "Security group for Application Load Balancer - Internet facing"
-  vpc_id      = data.aws_vpc.existing.id
+  vpc_id      = aws_vpc.main.id
 
   tags = {
-    Name        = "dw-FANS-ALB-SG"
+    Name        = "eks-FANS-ALB-SG"
     Environment = var.environment
     Project     = var.project_name
     Layer       = "Load Balancer"
@@ -23,12 +23,12 @@ resource "aws_security_group" "alb" {
 
 # SG-2: Web Services Security Group
 resource "aws_security_group" "web" {
-  name        = "dw-FANS-Web-SG"
+  name        = "eks-FANS-Web-SG"
   description = "Security group for Main API and AI services - ALB access only"
-  vpc_id      = data.aws_vpc.existing.id
+  vpc_id      = aws_vpc.main.id
 
   tags = {
-    Name        = "dw-FANS-Web-SG"
+    Name        = "eks-FANS-Web-SG"
     Environment = var.environment
     Project     = var.project_name
     Layer       = "Application"
@@ -38,12 +38,12 @@ resource "aws_security_group" "web" {
 
 # SG-3: Internal Crawler Security Group
 resource "aws_security_group" "crawler" {
-  name        = "dw-FANS-Crawler-SG"
+  name        = "eks-FANS-Crawler-SG"
   description = "Security group for internal crawlers - No inbound access"
-  vpc_id      = data.aws_vpc.existing.id
+  vpc_id      = aws_vpc.main.id
 
   tags = {
-    Name        = "dw-FANS-Crawler-SG"
+    Name        = "eks-FANS-Crawler-SG"
     Environment = var.environment
     Project     = var.project_name
     Layer       = "Background Jobs"
@@ -53,12 +53,12 @@ resource "aws_security_group" "crawler" {
 
 # SG-4: RDS Security Group
 resource "aws_security_group" "rds" {
-  name        = "dw-FANS-RDS-SG"
+  name        = "eks-FANS-RDS-SG"
   description = "Security group for RDS PostgreSQL - Application access only"
-  vpc_id      = data.aws_vpc.existing.id
+  vpc_id      = aws_vpc.main.id
 
   tags = {
-    Name        = "dw-FANS-RDS-SG"
+    Name        = "eks-FANS-RDS-SG"
     Environment = var.environment
     Project     = var.project_name
     Layer       = "Database"
@@ -68,12 +68,12 @@ resource "aws_security_group" "rds" {
 
 # SG-5: ElastiCache Security Group
 resource "aws_security_group" "elasticache" {
-  name        = "dw-FANS-ElastiCache-SG"
+  name        = "eks-FANS-ElastiCache-SG"
   description = "Security group for ElastiCache Redis - Web services only"
-  vpc_id      = data.aws_vpc.existing.id
+  vpc_id      = aws_vpc.main.id
 
   tags = {
-    Name        = "dw-FANS-ElastiCache-SG"
+    Name        = "eks-FANS-ElastiCache-SG"
     Environment = var.environment
     Project     = var.project_name
     Layer       = "Cache"

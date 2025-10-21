@@ -1,13 +1,13 @@
-# DW-FANS Application Load Balancer
+# EKS-FANS Application Load Balancer
 # API 트래픽 라우팅
-# Owner: DW (DongWon)
+# Owner: EKS Team
 
 # ============================================
 # Application Load Balancer
 # ============================================
 
 resource "aws_lb" "main" {
-  name               = "dw-FANS-ALB"
+  name               = "eks-FANS-ALB"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
@@ -21,7 +21,7 @@ resource "aws_lb" "main" {
   enable_cross_zone_load_balancing = true
 
   tags = {
-    Name        = "dw-FANS-ALB"
+    Name        = "eks-FANS-ALB"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -33,10 +33,10 @@ resource "aws_lb" "main" {
 
 # Main API Target Group
 resource "aws_lb_target_group" "main_api" {
-  name        = "dw-FANS-Main-API-TG"
-  port        = 3000
+  name        = "eks-FANS-Main-API-TG"
+  port        = 30001  # Kubernetes NodePort (main-api-service)
   protocol    = "HTTP"
-  vpc_id      = data.aws_vpc.existing.id
+  vpc_id      = aws_vpc.main.id
   target_type = "instance" # EKS NodePort용
 
   health_check {
@@ -54,7 +54,7 @@ resource "aws_lb_target_group" "main_api" {
   deregistration_delay = 30
 
   tags = {
-    Name        = "dw-FANS-Main-API-TG"
+    Name        = "eks-FANS-Main-API-TG"
     Environment = var.environment
     Project     = var.project_name
     Service     = "Main-API"
@@ -63,10 +63,10 @@ resource "aws_lb_target_group" "main_api" {
 
 # Summarize AI Target Group
 resource "aws_lb_target_group" "summarize_ai" {
-  name        = "dw-FANS-Summarize-AI-TG"
+  name        = "eks-FANS-Summarize-AI-TG"
   port        = 8000
   protocol    = "HTTP"
-  vpc_id      = data.aws_vpc.existing.id
+  vpc_id      = aws_vpc.main.id
   target_type = "instance"
 
   health_check {
@@ -84,7 +84,7 @@ resource "aws_lb_target_group" "summarize_ai" {
   deregistration_delay = 30
 
   tags = {
-    Name        = "dw-FANS-Summarize-AI-TG"
+    Name        = "eks-FANS-Summarize-AI-TG"
     Environment = var.environment
     Project     = var.project_name
     Service     = "Summarize-AI"
@@ -93,10 +93,10 @@ resource "aws_lb_target_group" "summarize_ai" {
 
 # Bias AI Target Group
 resource "aws_lb_target_group" "bias_ai" {
-  name        = "dw-FANS-Bias-AI-TG"
+  name        = "eks-FANS-Bias-AI-TG"
   port        = 8002
   protocol    = "HTTP"
-  vpc_id      = data.aws_vpc.existing.id
+  vpc_id      = aws_vpc.main.id
   target_type = "instance"
 
   health_check {
@@ -114,7 +114,7 @@ resource "aws_lb_target_group" "bias_ai" {
   deregistration_delay = 30
 
   tags = {
-    Name        = "dw-FANS-Bias-AI-TG"
+    Name        = "eks-FANS-Bias-AI-TG"
     Environment = var.environment
     Project     = var.project_name
     Service     = "Bias-AI"
@@ -137,7 +137,7 @@ resource "aws_lb_listener" "http" {
   }
 
   tags = {
-    Name        = "dw-FANS-ALB-HTTP-Listener"
+    Name        = "eks-FANS-ALB-HTTP-Listener"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -157,7 +157,7 @@ resource "aws_lb_listener" "https" {
   }
 
   tags = {
-    Name        = "dw-FANS-ALB-HTTPS-Listener"
+    Name        = "eks-FANS-ALB-HTTPS-Listener"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -185,7 +185,7 @@ resource "aws_lb_listener_rule" "main_api_https" {
   }
 
   tags = {
-    Name        = "dw-FANS-Main-API-HTTPS-Rule"
+    Name        = "eks-FANS-Main-API-HTTPS-Rule"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -208,7 +208,7 @@ resource "aws_lb_listener_rule" "summarize_ai_https" {
   }
 
   tags = {
-    Name        = "dw-FANS-Summarize-AI-HTTPS-Rule"
+    Name        = "eks-FANS-Summarize-AI-HTTPS-Rule"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -231,7 +231,7 @@ resource "aws_lb_listener_rule" "bias_ai_https" {
   }
 
   tags = {
-    Name        = "dw-FANS-Bias-AI-HTTPS-Rule"
+    Name        = "eks-FANS-Bias-AI-HTTPS-Rule"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -255,7 +255,7 @@ resource "aws_lb_listener_rule" "main_api_http" {
   }
 
   tags = {
-    Name        = "dw-FANS-Main-API-HTTP-Rule"
+    Name        = "eks-FANS-Main-API-HTTP-Rule"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -278,7 +278,7 @@ resource "aws_lb_listener_rule" "summarize_ai_http" {
   }
 
   tags = {
-    Name        = "dw-FANS-Summarize-AI-HTTP-Rule"
+    Name        = "eks-FANS-Summarize-AI-HTTP-Rule"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -301,7 +301,7 @@ resource "aws_lb_listener_rule" "bias_ai_http" {
   }
 
   tags = {
-    Name        = "dw-FANS-Bias-AI-HTTP-Rule"
+    Name        = "eks-FANS-Bias-AI-HTTP-Rule"
     Environment = var.environment
     Project     = var.project_name
   }

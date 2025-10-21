@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
       - name: main-api
-        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/dw-fans/main-api:latest
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/eks-fans/main-api:latest
         ports:
         - containerPort: 3000
           name: http
@@ -36,19 +36,17 @@ spec:
           value: "3000"
         - name: NODE_ENV
           value: "production"
-        - name: DATABASE_URL
+        - name: DB_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: fans-secrets
-              key: database-url
+              name: fans-secret
+              key: DB_PASSWORD
         - name: DB_HOST
-          value: "dw-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
+          value: "eks-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
         - name: DB_PORT
           value: "5432"
         - name: DB_USERNAME
           value: "fans_admin"
-        - name: DB_PASSWORD
-          value: "fans_password"
         - name: DB_NAME
           value: "fans_db"
         - name: PGSSLMODE
@@ -56,56 +54,31 @@ spec:
         - name: AI_SERVICE_URL
           value: "http://summarize-ai:8000"
         - name: BIAS_AI_SERVICE_URL
-          value: "http://bias-analysis-ai:8002"
-        - name: REDIS_URL
-          valueFrom:
-            secretKeyRef:
-              name: fans-secrets
-              key: redis-url
-        - name: EMAIL_USER
-          valueFrom:
-            secretKeyRef:
-              name: fans-email-secrets
-              key: email-user
-        - name: EMAIL_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: fans-email-secrets
-              key: email-password
+          value: "http://bias-analysis-ai:8100"
+        - name: REDIS_HOST
+          value: "eks-fans-redis.1wbeqm.ng.0001.apn2.cache.amazonaws.com"
+        - name: REDIS_PORT
+          value: "6379"
         - name: CORS_ALLOWED_ORIGINS
           value: "https://www.fans.ai.kr"
         - name: FRONTEND_URL
           value: "https://www.fans.ai.kr"
         - name: KAKAO_CLIENT_ID
-          valueFrom:
-            secretKeyRef:
-              name: fans-kakao-secrets
-              key: kakao-client-id
+          value: ""
         - name: KAKAO_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: fans-kakao-secrets
-              key: kakao-client-secret
+          value: ""
         - name: KAKAO_REDIRECT_URI
-          valueFrom:
-            secretKeyRef:
-              name: fans-kakao-secrets
-              key: kakao-redirect-uri
+          value: ""
         - name: NAVER_CLIENT_ID
-          valueFrom:
-            secretKeyRef:
-              name: fans-naver-secrets
-              key: naver-client-id
+          value: ""
         - name: NAVER_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: fans-naver-secrets
-              key: naver-client-secret
+          value: ""
         - name: NAVER_REDIRECT_URI
-          valueFrom:
-            secretKeyRef:
-              name: fans-naver-secrets
-              key: naver-redirect-uri
+          value: ""
+        - name: EMAIL_USER
+          value: "noreply@fans.ai.kr"
+        - name: EMAIL_PASSWORD
+          value: "dummy123"
 
         # 리소스 제한
         resources:

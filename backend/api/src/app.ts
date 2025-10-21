@@ -18,6 +18,7 @@ import authRoutes from './routes/auth';
 import userInteractionsRoutes from './routes/userInteractions';
 import subscriptionRoutes from './routes/subscription';
 import commentsRoutes from './routes/comments';
+import recommendationsRoutes from './routes/recommendations';
 const envPath = path.resolve(__dirname, '../.env');
 logger.debug(`Loading .env from: ${envPath}`);
 const dotenvResult = dotenv.config({ path: envPath });
@@ -119,6 +120,7 @@ app.use('/api', commonRoutes);
 app.use('/api', newsRoutes);
 app.use("/api/market", marketSummaryRoutes);
 app.use('/api', commentsRoutes);
+app.use('/api/recommendations', recommendationsRoutes);
 
 
 async function startServer() {

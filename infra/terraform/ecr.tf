@@ -1,10 +1,10 @@
-# DW-FANS ECR (Elastic Container Registry)
+# EKS-FANS ECR (Elastic Container Registry)
 # Docker 이미지 저장소
-# Owner: DW (DongWon)
+# Owner: EKS Team
 
 # Main API
 resource "aws_ecr_repository" "main_api" {
-  name                 = "dw-fans/main-api"
+  name                 = "eks-fans/main-api"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -12,7 +12,7 @@ resource "aws_ecr_repository" "main_api" {
   }
 
   tags = {
-    Name        = "dw-FANS-ECR-Main-API"
+    Name        = "eks-FANS-ECR-Main-API"
     Environment = var.environment
     Project     = var.project_name
     Service     = "Main-API"
@@ -21,7 +21,7 @@ resource "aws_ecr_repository" "main_api" {
 
 # Summarize AI
 resource "aws_ecr_repository" "summarize_ai" {
-  name                 = "dw-fans/summarize-ai"
+  name                 = "eks-fans/summarize-ai"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -29,7 +29,7 @@ resource "aws_ecr_repository" "summarize_ai" {
   }
 
   tags = {
-    Name        = "dw-FANS-ECR-Summarize-AI"
+    Name        = "eks-FANS-ECR-Summarize-AI"
     Environment = var.environment
     Project     = var.project_name
     Service     = "Summarize-AI"
@@ -38,7 +38,7 @@ resource "aws_ecr_repository" "summarize_ai" {
 
 # Bias Analysis AI
 resource "aws_ecr_repository" "bias_ai" {
-  name                 = "dw-fans/bias-analysis-ai"
+  name                 = "eks-fans/bias-analysis-ai"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -46,7 +46,7 @@ resource "aws_ecr_repository" "bias_ai" {
   }
 
   tags = {
-    Name        = "dw-FANS-ECR-Bias-AI"
+    Name        = "eks-FANS-ECR-Bias-AI"
     Environment = var.environment
     Project     = var.project_name
     Service     = "Bias-AI"
@@ -55,7 +55,7 @@ resource "aws_ecr_repository" "bias_ai" {
 
 # API Crawler
 resource "aws_ecr_repository" "api_crawler" {
-  name                 = "dw-fans/api-crawler"
+  name                 = "eks-fans/api-crawler"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -63,7 +63,7 @@ resource "aws_ecr_repository" "api_crawler" {
   }
 
   tags = {
-    Name        = "dw-FANS-ECR-API-Crawler"
+    Name        = "eks-FANS-ECR-API-Crawler"
     Environment = var.environment
     Project     = var.project_name
     Service     = "API-Crawler"
@@ -72,7 +72,7 @@ resource "aws_ecr_repository" "api_crawler" {
 
 # Puppeteer Crawler
 resource "aws_ecr_repository" "puppeteer_crawler" {
-  name                 = "dw-fans/puppeteer-crawler"
+  name                 = "eks-fans/puppeteer-crawler"
   image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
@@ -80,7 +80,7 @@ resource "aws_ecr_repository" "puppeteer_crawler" {
   }
 
   tags = {
-    Name        = "dw-FANS-ECR-Puppeteer-Crawler"
+    Name        = "eks-FANS-ECR-Puppeteer-Crawler"
     Environment = var.environment
     Project     = var.project_name
     Service     = "Puppeteer-Crawler"

@@ -1,0 +1,174 @@
+.recommendations-section {
+  margin: 30px 0;
+  padding: 25px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.recommendations-section.collapsed {
+  padding: 15px 25px;
+}
+
+.recommendations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.recommendations-section.collapsed .recommendations-header {
+  margin-bottom: 0;
+}
+
+.recommendations-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recommendations-header h2 {
+  color: white;
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0;
+}
+
+.recommendations-count {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 16px;
+  font-weight: normal;
+}
+
+.toggle-icon {
+  color: white;
+  font-size: 18px;
+  transition: transform 0.3s ease;
+}
+
+.recommendations-refresh-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1.5px solid rgba(255, 255, 255, 0.3);
+  padding: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.recommendations-refresh-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.recommendations-refresh-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.5);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transform: scale(1.05);
+}
+
+.recommendations-refresh-btn:hover:not(:disabled) svg {
+  transform: rotate(-180deg);
+}
+
+.recommendations-refresh-btn:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.recommendations-refresh-btn:active:not(:disabled) svg {
+  transform: rotate(-360deg);
+}
+
+.recommendations-refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.recommendations-refresh-btn:disabled svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.recommendations-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+}
+
+.recommendations-loading,
+.recommendations-error,
+.recommendations-empty {
+  padding: 40px;
+  text-align: center;
+  background: white;
+  border-radius: 8px;
+  color: #666;
+  font-size: 16px;
+}
+
+.recommendations-error {
+  color: #e74c3c;
+}
+
+@media (max-width: 768px) {
+  .recommendations-section {
+    padding: 15px;
+  }
+
+  .recommendations-section.collapsed {
+    padding: 12px 15px;
+  }
+
+  .recommendations-header h2 {
+    font-size: 20px;
+  }
+
+  .recommendations-count {
+    font-size: 14px;
+  }
+
+  .toggle-icon {
+    font-size: 16px;
+  }
+
+  .recommendations-refresh-btn {
+    width: 36px;
+    height: 36px;
+  }
+
+  .recommendations-refresh-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .recommendations-grid {
+    grid-template-columns: 1fr;
+    padding: 15px;
+  }
+}

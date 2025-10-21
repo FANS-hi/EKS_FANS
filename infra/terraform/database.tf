@@ -1,20 +1,20 @@
-# DW-FANS Database & Cache
+# EKS-FANS Database & Cache
 # RDS PostgreSQL + ElastiCache Redis
-# Owner: DW (DongWon)
+# Owner: EKS Team
 
 # ============================================
 # RDS Subnet Group
 # ============================================
 
 resource "aws_db_subnet_group" "main" {
-  name = "dw-fans-db-subnet-group"
+  name = "eks-fans-db-subnet-group"
   subnet_ids = [
     aws_subnet.fans_private_a.id,
     aws_subnet.fans_private_b.id
   ]
 
   tags = {
-    Name        = "dw-FANS-DB-Subnet-Group"
+    Name        = "eks-FANS-DB-Subnet-Group"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -25,7 +25,7 @@ resource "aws_db_subnet_group" "main" {
 # ============================================
 
 resource "aws_db_instance" "postgres" {
-  identifier     = "dw-fans-postgres"
+  identifier     = "eks-fans-postgres"
   engine         = "postgres"
   engine_version = "15.7"
   instance_class = "db.t3.micro" # 프리티어급
@@ -48,7 +48,7 @@ resource "aws_db_instance" "postgres" {
   backup_retention_period = 7
 
   tags = {
-    Name        = "dw-FANS-PostgreSQL"
+    Name        = "eks-FANS-PostgreSQL"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -59,14 +59,14 @@ resource "aws_db_instance" "postgres" {
 # ============================================
 
 resource "aws_elasticache_subnet_group" "main" {
-  name = "dw-fans-cache-subnet-group"
+  name = "eks-fans-cache-subnet-group"
   subnet_ids = [
     aws_subnet.fans_private_a.id,
     aws_subnet.fans_private_b.id
   ]
 
   tags = {
-    Name        = "dw-FANS-Cache-Subnet-Group"
+    Name        = "eks-FANS-Cache-Subnet-Group"
     Environment = var.environment
     Project     = var.project_name
   }
@@ -77,8 +77,8 @@ resource "aws_elasticache_subnet_group" "main" {
 # ============================================
 
 resource "aws_elasticache_replication_group" "redis" {
-  replication_group_id = "dw-fans-redis"
-  description          = "dw-FANS Redis Cache"
+  replication_group_id = "eks-fans-redis"
+  description          = "eks-FANS Redis Cache"
   engine               = "redis"
   engine_version       = "7.0"
   node_type            = "cache.t3.micro"
@@ -93,7 +93,7 @@ resource "aws_elasticache_replication_group" "redis" {
   automatic_failover_enabled = false # 단일 노드는 false
 
   tags = {
-    Name        = "dw-FANS-Redis"
+    Name        = "eks-FANS-Redis"
     Environment = var.environment
     Project     = var.project_name
   }

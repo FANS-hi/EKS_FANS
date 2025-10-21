@@ -6,12 +6,6 @@ variable "aws_region" {
   default     = "ap-northeast-2" # 서울 리전
 }
 
-variable "existing_vpc_id" {
-  description = "기존 VPC ID (dongwon VPC)"
-  type        = string
-  default     = "vpc-0fa60f4833b7932ad"
-}
-
 variable "project_name" {
   description = "Project name"
   type        = string

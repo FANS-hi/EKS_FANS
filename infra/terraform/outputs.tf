@@ -6,12 +6,12 @@
 
 output "vpc_id" {
   description = "VPC ID"
-  value       = data.aws_vpc.existing.id
+  value       = aws_vpc.main.id
 }
 
 output "vpc_cidr" {
   description = "VPC CIDR Block"
-  value       = data.aws_vpc.existing.cidr_block
+  value       = aws_vpc.main.cidr_block
 }
 
 # ============================================
@@ -173,8 +173,8 @@ output "s3_bucket_name" {
 output "infrastructure_summary" {
   description = "Infrastructure Summary"
   value = {
-    vpc_id            = data.aws_vpc.existing.id
-    vpc_cidr          = data.aws_vpc.existing.cidr_block
+    vpc_id            = aws_vpc.main.id
+    vpc_cidr          = aws_vpc.main.cidr_block
     public_subnets    = [aws_subnet.fans_public_a.id, aws_subnet.fans_public_b.id]
     private_subnets   = [aws_subnet.fans_private_a.id, aws_subnet.fans_private_b.id]
     nat_gateway_count = 2
@@ -204,7 +204,7 @@ output "connection_info" {
   value       = <<-EOT
 
   ========================================
-  DW-FANS 인프라 배포 완료!
+  EKS-FANS 인프라 배포 완료!
   ========================================
 
   [프론트엔드 URL]

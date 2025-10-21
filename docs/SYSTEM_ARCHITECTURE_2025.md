@@ -1,8 +1,8 @@
 # FANS 시스템 아키텍처 문서 (2025년 최신)
 
-**문서 버전**: 3.0
-**작성일**: 2025-10-17
-**상태**: EKS 배포 완료
+**문서 버전**: 3.1
+**작성일**: 2025-10-21
+**상태**: EKS 배포 완료 (서비스 CIDR 수정)
 
 ## 📋 목차
 
@@ -51,7 +51,7 @@ FANS (Fast AI News Service)는 AI 기반 뉴스 큐레이션 서비스로, AWS E
 │     - 뉴스 요약 생성 (OpenAI API)                        │
 │     - HPA: 1-4 replicas (CPU 70%, Memory 80%)          │
 │                                                         │
-│  4. Bias Analysis AI (port 8002)                        │
+│  4. Bias Analysis AI (port 8100)                        │
 │     - 뉴스 편향성 분석 (언론사 성향 + 내용 분석)        │
 │     - HPA: 1-4 replicas (CPU 70%, Memory 80%)          │
 └─────────────────────────────────────────────────────────┘
@@ -185,7 +185,7 @@ backend/crawler/
             │  │  ┌─────────────┐  ┌─────────────┐               │  │
             │  │  │ Summarize AI│  │ Bias-Anal AI│               │  │
             │  │  │  (1 Pod)    │  │  (1 Pod)    │               │  │
-            │  │  │  Port: 8000 │  │  Port: 8002 │               │  │
+            │  │  │  Port: 8000 │  │  Port: 8100 │               │  │
             │  │  └─────────────┘  └─────────────┘               │  │
             │  └──────────────────────────────────────────────────┘  │
             │                                                         │
@@ -319,9 +319,9 @@ Update Strategy:
 - **IP 주소 관리**: ENI (Elastic Network Interface) 사용
 
 **서비스 네트워킹**:
-- **Service CIDR**: 172.20.0.0/16 (클러스터 내부)
-- **DNS**: CoreDNS (ClusterIP: 172.20.0.10)
-- **Service Type**: ClusterIP (기본), LoadBalancer (Ingress)
+- **Service CIDR**: 10.100.0.0/16 (클러스터 내부, AWS 기본값)
+- **DNS**: CoreDNS (ClusterIP: 10.100.0.10)
+- **Service Type**: ClusterIP (기본), NodePort (ALB 연동)
 
 #### 2.3.4 보안 그룹
 
@@ -2037,6 +2037,14 @@ kubectl top nodes
 
 ---
 
-**문서 작성**: Claude Code
-**최종 업데이트**: 2025-10-17
-**버전**: 3.0
+**문서 작성**: dw
+**최종 업데이트**: 2025-10-21
+**버전**: 3.1
+
+## 변경 이력
+
+### v3.1 (2025-10-21)
+- Bias Analysis AI 포트 변경: 8002 → 8100
+- ALB Target Group 포트 수정: NodePort와 일치하도록 변경 (30001)
+- Main API 환경변수 설정 추가
+- Kubernetes Service CIDR: 10.100.0.0/16 (AWS 기본값 사용)

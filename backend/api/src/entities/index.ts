@@ -11,5 +11,6 @@ export { ArticleStat } from './ArticleStat';
 export { AIRecommendation } from './AIRecommendation';
 export { BiasAnalysis } from './BiasAnalysis';
 export { UserPreference } from './UserPreference';
+export { UserRecommendation } from './UserRecommendation';
 export { MarketSummary } from './MarketSummary';
 export { Comment } from './Comment';

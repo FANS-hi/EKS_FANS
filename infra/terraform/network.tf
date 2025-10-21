@@ -7,7 +7,7 @@
 
 # Public Subnet A (AZ-2a)
 resource "aws_subnet" "fans_public_a" {
-  vpc_id                  = data.aws_vpc.existing.id
+  vpc_id                  = aws_vpc.main.id
   cidr_block              = "172.16.0.0/24"  # 256 IP addresses
   availability_zone       = "${var.aws_region}a"
   map_public_ip_on_launch = true
@@ -23,7 +23,7 @@ resource "aws_subnet" "fans_public_a" {
 
 # Public Subnet B (AZ-2c)
 resource "aws_subnet" "fans_public_b" {
-  vpc_id                  = data.aws_vpc.existing.id
+  vpc_id                  = aws_vpc.main.id
   cidr_block              = "172.16.1.0/24"  # 256 IP addresses
   availability_zone       = "${var.aws_region}c"
   map_public_ip_on_launch = true
@@ -39,7 +39,7 @@ resource "aws_subnet" "fans_public_b" {
 
 # Private Subnet A (AZ-2a)
 resource "aws_subnet" "fans_private_a" {
-  vpc_id            = data.aws_vpc.existing.id
+  vpc_id            = aws_vpc.main.id
   cidr_block        = "172.16.16.0/20"  # 4,096 IP addresses (EKS Pod IP용)
   availability_zone = "${var.aws_region}a"
 
@@ -54,7 +54,7 @@ resource "aws_subnet" "fans_private_a" {
 
 # Private Subnet B (AZ-2c)
 resource "aws_subnet" "fans_private_b" {
-  vpc_id            = data.aws_vpc.existing.id
+  vpc_id            = aws_vpc.main.id
   cidr_block        = "172.16.32.0/20"  # 4,096 IP addresses (EKS Pod IP용)
   availability_zone = "${var.aws_region}c"
 
@@ -108,7 +108,7 @@ resource "aws_nat_gateway" "nat_a" {
     AZ          = "${var.aws_region}a"
   }
 
-  depends_on = [data.aws_internet_gateway.existing]
+  depends_on = [aws_internet_gateway.main]
 }
 
 resource "aws_nat_gateway" "nat_b" {
@@ -122,7 +122,7 @@ resource "aws_nat_gateway" "nat_b" {
     AZ          = "${var.aws_region}c"
   }
 
-  depends_on = [data.aws_internet_gateway.existing]
+  depends_on = [aws_internet_gateway.main]
 }
 
 # ============================================
@@ -133,11 +133,11 @@ resource "aws_nat_gateway" "nat_b" {
 # - Public Subnet A, B에서 사용
 # - 인터넷 트래픽을 Internet Gateway로 라우팅
 resource "aws_route_table" "public" {
-  vpc_id = data.aws_vpc.existing.id
+  vpc_id = aws_vpc.main.id
 
   route {
     cidr_block = "0.0.0.0/0"
-    gateway_id = data.aws_internet_gateway.existing.id
+    gateway_id = aws_internet_gateway.main.id
   }
 
   tags = {
@@ -152,7 +152,7 @@ resource "aws_route_table" "public" {
 # - Private Subnet A에서 사용
 # - 아웃바운드 트래픽을 NAT Gateway A로 라우팅
 resource "aws_route_table" "private_a" {
-  vpc_id = data.aws_vpc.existing.id
+  vpc_id = aws_vpc.main.id
 
   route {
     cidr_block     = "0.0.0.0/0"
@@ -172,7 +172,7 @@ resource "aws_route_table" "private_a" {
 # - Private Subnet B에서 사용
 # - 아웃바운드 트래픽을 NAT Gateway B로 라우팅
 resource "aws_route_table" "private_b" {
-  vpc_id = data.aws_vpc.existing.id
+  vpc_id = aws_vpc.main.id
 
   route {
     cidr_block     = "0.0.0.0/0"
