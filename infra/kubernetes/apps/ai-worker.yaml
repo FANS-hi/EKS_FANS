@@ -1,0 +1,137 @@
+# FANS AI Worker
+# SQS에서 AI 작업을 가져와서 처리하는 워커 서비스
+# 크롤러가 큐에 넣은 요약/편향 분석 작업을 순차 처리
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-worker
+  namespace: fans
+  labels:
+    app: ai-worker
+    tier: worker
+    project: FANS
+spec:
+  replicas: 2  # Worker 2개로 시작 (확장 가능)
+  selector:
+    matchLabels:
+      app: ai-worker
+  template:
+    metadata:
+      labels:
+        app: ai-worker
+        tier: worker
+    spec:
+      containers:
+      - name: ai-worker
+        image: 907123164281.dkr.ecr.ap-northeast-2.amazonaws.com/fans/ai-worker:latest
+
+        env:
+        # AWS 설정
+        - name: AWS_REGION
+          value: "ap-northeast-2"
+
+        # SQS 큐 URL (Terraform output에서 가져오기)
+        - name: SQS_SUMMARIZE_QUEUE_URL
+          value: "https://sqs.ap-northeast-2.amazonaws.com/907123164281/fans-ai-summarize-queue"
+        - name: SQS_BIAS_QUEUE_URL
+          value: "https://sqs.ap-northeast-2.amazonaws.com/907123164281/fans-ai-bias-queue"
+
+        # AI 서비스 URL
+        - name: SUMMARIZE_AI_URL
+          value: "http://summarize-ai:8000"
+        - name: BIAS_AI_URL
+          value: "http://bias-analysis-ai:8002"
+
+        # 데이터베이스 설정
+        - name: DB_HOST
+          value: "eks-fans-postgres.cz884ewuuhlv.ap-northeast-2.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USERNAME
+          value: "fans_admin"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: fans-secrets
+              key: DB_PASSWORD
+        - name: DB_NAME
+          value: "fans_db"
+        - name: PGSSLMODE
+          value: "no-verify"
+
+        # Worker 설정
+        - name: MAX_CONCURRENT_JOBS
+          value: "5"  # 동시 처리 제한 (AI 서버 부하 조절)
+        - name: NODE_ENV
+          value: "production"
+        - name: TZ
+          value: "Asia/Seoul"
+
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+        # Liveness Probe (프로세스가 살아있는지)
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - "ps aux | grep '[n]ode dist/index.js' || exit 1"
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        # Worker는 HTTP 엔드포인트 없음 (SQS 폴링만 함)
+        # Readiness Probe 불필요
+
+---
+# HorizontalPodAutoscaler - 큐 길이에 따라 자동 스케일링
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ai-worker-hpa
+  namespace: fans
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ai-worker
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  # CPU 기반 스케일링
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  # 메모리 기반 스케일링
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 60  # 1분 동안 안정화
+      policies:
+      - type: Percent
+        value: 50  # 한 번에 50%씩 증가
+        periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 5분 동안 안정화
+      policies:
+      - type: Pods
+        value: 1  # 한 번에 1개씩 감소
+        periodSeconds: 120

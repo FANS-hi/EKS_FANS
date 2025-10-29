@@ -68,6 +68,16 @@ spec:
         - name: TYPEORM_SYNC
           value: "true"
 
+        # SQS 설정 (AI 작업 큐 전송)
+        - name: USE_SQS
+          value: "true"  # true로 설정하면 AI 직접 호출 대신 SQS 사용
+        - name: SQS_SUMMARIZE_QUEUE_URL
+          value: "https://sqs.ap-northeast-2.amazonaws.com/907123164281/fans-ai-summarize-queue"
+        - name: SQS_BIAS_QUEUE_URL
+          value: "https://sqs.ap-northeast-2.amazonaws.com/907123164281/fans-ai-bias-queue"
+        - name: AWS_REGION
+          value: "ap-northeast-2"
+
         resources:
           requests:
             cpu: 250m
