@@ -32,7 +32,8 @@ export class DaumJsonParser {
       'https://news.daum.net/foreign',    // 국제
       'https://news.daum.net/culture',    // 문화
       'https://news.daum.net/digital',    // IT
-      'https://news.daum.net/entertain',  // 연예
+      'https://entertain.daum.net/',      // 연예
+      'https://sports.daum.net/',         // 스포츠
     ];
   }
 
@@ -46,7 +47,8 @@ export class DaumJsonParser {
     if (url.includes('/foreign')) return '세계';
     if (url.includes('/culture')) return '생활/문화';
     if (url.includes('/digital')) return 'IT/과학';
-    if (url.includes('/entertain')) return '연예';
+    if (url.includes('entertain.daum.net')) return '연예';
+    if (url.includes('sports.daum.net')) return '스포츠';
     return undefined;
   }
 
@@ -65,12 +67,17 @@ export class DaumJsonParser {
       // 동적 콘텐츠 로딩 대기
       await page.waitForTimeout(2000);
 
-      // 기사 URL 수집
+      // 기사 URL 수집 (일반 뉴스, 연예, 스포츠 모두 포함)
       const urls = await page.evaluate(() => {
-        const links = Array.from(document.querySelectorAll('a[href*="v.daum.net/v/"]'));
+        const links = Array.from(document.querySelectorAll('a[href]'));
         return links
           .map((a) => (a as HTMLAnchorElement).href)
-          .filter((href) => href && href.includes('v.daum.net/v/'));
+          .filter((href) => {
+            if (!href) return false;
+            // 다음 뉴스 기사 패턴: v.daum.net/v/XXXXXX
+            // 연예/스포츠도 v.daum.net 사용
+            return href.includes('v.daum.net/v/');
+          });
       });
 
       // 중복 제거
@@ -93,7 +100,7 @@ export class DaumJsonParser {
 
       await page.goto(url, {
         waitUntil: 'networkidle0',
-        timeout: 45000
+        timeout: 60000
       });
 
       // JSON 데이터와 본문 추출
@@ -190,21 +197,53 @@ export class DaumJsonParser {
           pubDateStr: document.querySelector('.num_date')?.textContent?.trim() || ''
         };
 
-        // 기자명 추출
+        // 기자명 추출 (여러 선택자 시도)
+        let journalistFound = false;
+
+        // 시도 1: .txt_info
         const infoEl = document.querySelector('.txt_info');
         if (infoEl && infoEl.textContent) {
           const match = infoEl.textContent.match(/([가-힣]{2,4})\s*기자/);
           if (match) {
             fallbackData.journalist = match[1];
+            journalistFound = true;
           }
         }
 
-        // 이미지 추출
-        const imgEl = document.querySelector('div.article_view img');
-        if (imgEl) {
-          const src = imgEl.getAttribute('src') || imgEl.getAttribute('data-src');
-          if (src && src.startsWith('http')) {
-            fallbackData.imageUrl = src;
+        // 시도 2: 기사 영역 전체에서 검색
+        if (!journalistFound) {
+          const articleEl = document.querySelector('.article_view');
+          if (articleEl) {
+            const text = articleEl.textContent || '';
+            // "기자 이름" 또는 "이름 기자" 패턴 검색
+            const match = text.match(/([가-힣]{2,4})\s*기자/) || text.match(/기자\s*([가-힣]{2,4})/);
+            if (match) {
+              fallbackData.journalist = match[1];
+              journalistFound = true;
+            }
+          }
+        }
+
+        fallbackData.journalistDebug = journalistFound ? 'found' : 'not_found';
+
+        // 이미지 추출 (여러 방법 시도)
+        // 시도 1: og:image 메타 태그
+        const ogImage = document.querySelector('meta[property="og:image"]');
+        if (ogImage) {
+          const content = ogImage.getAttribute('content');
+          if (content && content.startsWith('http')) {
+            fallbackData.imageUrl = content;
+          }
+        }
+
+        // 시도 2: 본문 img 태그 (og:image가 없을 때)
+        if (!fallbackData.imageUrl) {
+          const imgEl = document.querySelector('div.article_view img');
+          if (imgEl) {
+            const src = imgEl.getAttribute('src') || imgEl.getAttribute('data-src');
+            if (src && src.startsWith('http')) {
+              fallbackData.imageUrl = src;
+            }
           }
         }
 
@@ -253,6 +292,8 @@ export class DaumJsonParser {
       if (category) {
         logger.info(`  카테고리: ${category}`);
       }
+      logger.info(`  기자: ${journalist || '없음'} (${(articleData.fallbackData as any).journalistDebug || 'unknown'})`);
+      logger.info(`  이미지: ${imageUrl ? '있음' : '없음'}`);
 
       return {
         title,

@@ -33,7 +33,7 @@ export class NaverMetaParser {
       'https://news.naver.com/section/105',  // IT/과학
       'https://news.naver.com/section/104',  // 세계
       'https://news.naver.com/section/114',  // 연예
-      'https://sports.news.naver.com/index', // 스포츠
+      'https://m.sports.naver.com/index',    // 스포츠
     ];
   }
 
@@ -48,7 +48,7 @@ export class NaverMetaParser {
     if (url.includes('/section/105')) return 'IT/과학';
     if (url.includes('/section/104')) return '세계';
     if (url.includes('/section/114')) return '연예';
-    if (url.includes('sports.news.naver.com')) return '스포츠';
+    if (url.includes('sports.naver.com')) return '스포츠';
     return undefined;
   }
 
@@ -75,7 +75,6 @@ export class NaverMetaParser {
           .filter((href) => {
             if (!href || !href.includes('/article/')) return false;
             if (href.includes('/comment')) return false;  // 댓글 페이지 제외
-            if (href.includes('sports')) return false;    // 스포츠 제외
 
             // /article/언론사코드/기사번호 형식만 허용
             const match = href.match(/\/article\/(\d+)\/(\d+)/);
@@ -103,7 +102,7 @@ export class NaverMetaParser {
 
       await page.goto(url, {
         waitUntil: 'networkidle0',
-        timeout: 45000
+        timeout: 60000
       });
 
       // 메타 태그와 본문 추출 (단순화된 버전)
@@ -144,34 +143,83 @@ export class NaverMetaParser {
           const removeSelectors = contentEl.querySelectorAll('script, style, .ad, figure, .btn_fold');
           removeSelectors.forEach(el => el.remove());
 
-          // 본문 텍스트 (문단별로 추출)
-          const paragraphs: string[] = [];
-          const pElements = contentEl.querySelectorAll('p');
-          pElements.forEach(p => {
-            const text = p.textContent?.trim();
-            if (text && text.length > 0) {
-              paragraphs.push(text);
+          // 본문 텍스트 추출 (전체 텍스트 → 문단 분리)
+          const rawText = contentEl.textContent?.trim() || '';
+
+          if (rawText) {
+            // 여러 줄바꿈(\n\n 이상)을 기준으로 문단 분리
+            const paragraphs = rawText
+              .split(/\n\s*\n/)  // 두 개 이상의 줄바꿈으로 분리
+              .map(para => para.trim())
+              .map(para => para.replace(/\s+/g, ' '))  // 중복 공백 제거
+              .filter(para => para.length > 20);  // 최소 20자 이상만
+
+            // 문단이 제대로 분리되지 않았으면 (전체가 한 덩어리)
+            if (paragraphs.length === 1 && paragraphs[0].length > 500) {
+              // 단일 줄바꿈 기준으로 재시도
+              const lines = rawText
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 20);
+
+              result.content = lines.join('\n\n');
+            } else {
+              result.content = paragraphs.join('\n\n');
             }
-          });
-          result.content = paragraphs.length > 0 ? paragraphs.join('\n\n') : (contentEl.textContent?.trim() || '');
+          }
         }
 
         // 4. 이미지 폴백
         if (!result.imageUrl) {
           const imgEl = document.querySelector('#dic_area img');
           if (imgEl) {
-            const src = imgEl.getAttribute('src');
+            const src = imgEl.getAttribute('src') || imgEl.getAttribute('data-src');
             if (src && src.startsWith('http')) result.imageUrl = src;
           }
         }
 
-        // 5. 기자명
-        const journalistEl = document.querySelector('.media_end_head_journalist .name');
-        if (journalistEl) {
-          const text = journalistEl.textContent || '';
+        // 5. 기자명 (여러 선택자 시도)
+        let journalistFound = false;
+
+        // 시도 1: .media_end_head_journalist .name
+        const journalistEl1 = document.querySelector('.media_end_head_journalist .name');
+        if (journalistEl1) {
+          const text = journalistEl1.textContent || '';
           const match = text.match(/([가-힣]{2,4})\s*기자/);
-          if (match) result.journalist = match[1];
+          if (match) {
+            result.journalist = match[1];
+            journalistFound = true;
+          }
         }
+
+        // 시도 2: .media_end_head_journalist_name (다른 구조)
+        if (!journalistFound) {
+          const journalistEl2 = document.querySelector('.media_end_head_journalist_name');
+          if (journalistEl2) {
+            const text = journalistEl2.textContent || '';
+            const match = text.match(/([가-힣]{2,4})\s*기자/);
+            if (match) {
+              result.journalist = match[1];
+              journalistFound = true;
+            }
+          }
+        }
+
+        // 시도 3: 전체 journalist 영역에서 검색
+        if (!journalistFound) {
+          const journalistArea = document.querySelector('.media_end_head_journalist');
+          if (journalistArea) {
+            const text = journalistArea.textContent || '';
+            const match = text.match(/([가-힣]{2,4})\s*기자/);
+            if (match) {
+              result.journalist = match[1];
+              journalistFound = true;
+            }
+          }
+        }
+
+        // 디버깅: 기자 정보 찾았는지 표시
+        result.journalistDebug = journalistFound ? 'found' : 'not_found';
 
         // 6. 언론사 폴백
         if (!result.originalSource) {
@@ -220,6 +268,8 @@ export class NaverMetaParser {
       if (category) {
         logger.info(`  카테고리: ${category}`);
       }
+      logger.info(`  기자: ${articleData.journalist || '없음'} (${(articleData as any).journalistDebug || 'unknown'})`);
+      logger.info(`  이미지: ${articleData.imageUrl ? '있음' : '없음'}`);
 
       return {
         title: articleData.title,
